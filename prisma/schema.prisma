@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  uniqueId  String   @unique
+  username  String
+  email     String   @unique
+  phoneCode String?
+  phone     String?
+  role      String   @default("CUSTOMER")
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts    Account[]
+  pnls       PnL[]
+  wallet     Wallet?
+  userPlan   UserPlan?
+  chats      Chat[]
+  messages   Message[]
+  referralsAsAgent     Referral[] @relation("AgentReferrals")
+  referralsAsCustomer  Referral[] @relation("CustomerReferrals")
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  userId    String
+  accountNo String   @unique
+  server    String
+  password  String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Plan {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  minDeposit Float
+  maxDeposit Float
+  maxAccounts Int
+  profitSharingCustomer Int
+  profitSharingPlatform Int
+  upfrontFee Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userPlans UserPlan[]
+}
+
+model UserPlan {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  planId    String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  plan      Plan     @relation(fields: [planId], references: [id])
+}
+
+model PnL {
+  id              String   @id @default(uuid())
+  userId          String
+  date            DateTime
+  symbol          String
+  totalPnL        Float
+  customerShare   Float
+  divineAlgoShare Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  archivedAt DateTime?
+
+  user        User          @relation(fields: [userId], references: [uniqueId])
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  walletId    String
+  type        String
+  amount      Float
+  status      String   @default("PENDING")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model Chat {
+  id          String   @id @default(uuid())
+  customerId  String
+  lastMessage String?
+  unreadCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    User      @relation(fields: [customerId], references: [id])
+  messages    Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id])
+}
+
+model Referral {
+  id                String   @id @default(uuid())
+  agentId          String
+  customerId       String
+  signupDate       DateTime @default(now())
+  isManualAssignment Boolean @default(false)
+  isActive         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  agent            User     @relation("AgentReferrals", fields: [agentId], references: [id])
+  customer         User     @relation("CustomerReferrals", fields: [customerId], references: [id])
+}
+
+model Staff {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  role        String   // ADMIN, MANAGER, SUPPORT, COO, CTO, CMO, CAO
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  permissions String   // Will store JSON as a string
+  createdAt   DateTime @default(now()) @map("created_at")
+  lastLogin   DateTime? @map("last_login")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("staff")
+} 

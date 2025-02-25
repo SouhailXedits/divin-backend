@@ -1,0 +1,89 @@
+import { PrismaClient } from '@prisma/client';
+import { User, UserRole, UserStatus } from '../types';
+
+const prisma = new PrismaClient();
+
+export const userService = {
+  async findAll() {
+    return prisma.user.findMany({
+      include: {
+        accounts: true,
+        wallet: true,
+        userPlan: {
+          include: {
+            plan: true
+          }
+        },
+        referralsAsAgent: true,
+        referralsAsCustomer: true
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  },
+
+  async findById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      include: {
+        accounts: true,
+        wallet: true,
+        userPlan: {
+          include: {
+            plan: true
+          }
+        }
+      }
+    });
+  },
+
+  async findByUniqueId(uniqueId: string) {
+    return prisma.user.findUnique({
+      where: { uniqueId },
+    });
+  },
+
+  async create(data: {
+    username: string;
+    email: string;
+    phoneCode: string;
+    phone: string;
+    status: UserStatus;
+  }) {
+    return prisma.user.create({
+      data: {
+        ...data,
+        uniqueId: `C${Math.floor(1000 + Math.random() * 9000)}`,
+        role: UserRole.CUSTOMER,
+      },
+    });
+  },
+
+  async updateStatus(id: string, status: UserStatus) {
+    return prisma.user.update({
+      where: { id },
+      data: { status },
+    });
+  },
+
+  async updateRole(uniqueId: string, role: UserRole) {
+    return prisma.user.update({
+      where: { uniqueId },
+      data: { role },
+    });
+  },
+
+  async update(id: string, data: Partial<User>) {
+    return prisma.user.update({
+      where: { id },
+      data,
+    });
+  },
+
+  async delete(id: string) {
+    return prisma.user.delete({
+      where: { id },
+    });
+  }
+}; 
