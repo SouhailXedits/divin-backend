@@ -15,8 +15,9 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { username, email, phoneCode, phone, status } = req.body;
+    const { username, email, phoneCode, phone, status, id } = req.body;
     const user = await userService.create({
+      id,
       username,
       email,
       phoneCode,

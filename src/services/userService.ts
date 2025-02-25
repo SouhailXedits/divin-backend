@@ -45,6 +45,7 @@ export const userService = {
   },
 
   async create(data: {
+    id: string;
     username: string;
     email: string;
     phoneCode: string;
