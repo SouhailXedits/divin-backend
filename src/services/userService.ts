@@ -86,5 +86,39 @@ export const userService = {
     return prisma.user.delete({
       where: { id },
     });
+  },
+
+  async assignPlan(userId: string, planId: string) {
+    // Check if user already has a plan
+    const existingPlan = await prisma.userPlan.findUnique({
+      where: { userId }
+    });
+
+    if (existingPlan) {
+      // Update existing plan
+      return prisma.userPlan.update({
+        where: { userId },
+        data: {
+          planId,
+          status: 'PENDING',
+          updatedAt: new Date()
+        },
+        include: {
+          plan: true
+        }
+      });
+    }
+
+    // Create new plan assignment
+    return prisma.userPlan.create({
+      data: {
+        userId,
+        planId,
+        status: 'PENDING'
+      },
+      include: {
+        plan: true
+      }
+    });
   }
 }; 

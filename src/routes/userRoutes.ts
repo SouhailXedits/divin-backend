@@ -87,4 +87,20 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+router.post('/:id/plan', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { planId } = req.body;
+
+    if (!planId) {
+      throw new AppError('Plan ID is required', 400);
+    }
+
+    const userPlan = await userService.assignPlan(id, planId);
+    res.json(userPlan);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router; 
