@@ -28,11 +28,10 @@ export const walletService = {
     // Check if user exists and is active
     const user = await prisma.user.findFirst({
       where: { 
-        id: data.userId,
+        uniqueId: data.userId,
         status: 'ACTIVE'
       }
     });
-
     if (!user) {
       throw new Error('Active user not found');
     }

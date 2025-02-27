@@ -104,13 +104,25 @@ app.get('/api/chat/customer/:customerId', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { customerId } = req.body;
+    
+    // First verify the customer exists
+    const customerExists = await prisma.user.findUnique({
+      where: { id: customerId }
+    });
+
+    if (!customerExists) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Then create the chat
     const chat = await prisma.chat.create({
       data: {
-        customerId,
+        customerId: customerId,
         lastMessage: null,
         unreadCount: 0,
-      },
+      }
     });
+
     res.json(chat);
   } catch (error) {
     console.error('Error creating chat:', error);
