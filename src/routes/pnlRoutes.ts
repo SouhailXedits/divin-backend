@@ -16,9 +16,9 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { userId, date, symbol, totalPnL, customerShare, divineAlgoShare } = req.body;
+    const { userIds, date, symbol, totalPnL, customerShare, divineAlgoShare } = req.body;
     const pnl = await pnlService.create({
-      userId,
+      userIds,
       date: new Date(date),
       symbol,
       totalPnL,
