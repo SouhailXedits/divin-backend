@@ -55,4 +55,15 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// get user's account 
+router.get('/user/:userId', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const accounts = await accountService.findAll({ userId });
+    res.json(accounts);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router; 

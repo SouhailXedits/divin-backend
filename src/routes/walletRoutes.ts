@@ -60,8 +60,12 @@ router.patch('/:userId/balance', async (req, res, next) => {
 });
 
 router.post('/transactions', async (req, res, next) => {
+
+  console.log(req.body)
   try {
     const { walletId, type, amount, description } = req.body;
+    console.log(walletId, type, amount, description)
+
     const transaction = await walletService.createTransaction({
       walletId,
       type,
