@@ -78,4 +78,15 @@ router.post('/transactions', async (req, res, next) => {
   }
 });
 
+router.patch('/transactions/:id/status', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const transaction = await walletService.updateTransactionStatus(id, status);
+    res.json(transaction);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router; 

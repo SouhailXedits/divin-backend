@@ -20,7 +20,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   accounts    Account[]
-  pnls       PnL[]
+  userPnLs    UserPnL[]
   wallet     Wallet?
   userPlan   UserPlan?
   chats      Chat[]
@@ -71,7 +71,6 @@ model UserPlan {
 
 model PnL {
   id              String   @id @default(uuid())
-  userId          String
   date            DateTime
   symbol          String
   totalPnL        Float
@@ -80,7 +79,20 @@ model PnL {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user            User     @relation(fields: [userId], references: [id])
+  userPnls        UserPnL[]
+}
+
+model UserPnL {
+  id        String   @id @default(uuid())
+  userId    String
+  pnlId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  pnl       PnL      @relation(fields: [pnlId], references: [id])
+
+  @@unique([userId, pnlId])
 }
 
 model Wallet {

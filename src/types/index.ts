@@ -103,7 +103,7 @@ export interface Referral {
 
 export interface PnL {
   id: string;
-  userId: string;
+  userIds: string[];
   date: Date;
   symbol: string;
   totalPnL: number;
