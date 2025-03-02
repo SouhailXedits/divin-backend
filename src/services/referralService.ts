@@ -68,7 +68,7 @@ export const referralService = {
     } else {
       // Find customer by uniqueId
       const customer = await prisma.user.findUnique({
-        where: { uniqueId: customerUniqueId },
+        where: { email: customerUniqueId },
       });
 
       if (!customer) {

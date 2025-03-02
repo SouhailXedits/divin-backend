@@ -37,6 +37,7 @@ export const pnlService = {
 
   async create(data: Omit<PnL, 'id' | 'createdAt' | 'updatedAt'>) {
     const { userIds, ...pnlData } = data;
+    let totalDivineAlgoShare = 0;
     
     const query: Prisma.PnLCreateArgs = {
       data: {
@@ -76,18 +77,54 @@ export const pnlService = {
             plan: true,
           },
         },
+        referralsAsCustomer: {
+          include: {
+            agent: {
+              include: {
+                wallet: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    Promise.all(users.map(async (user) => {
-      return await this.createTransaction({
-        walletId: user.wallet?.id || '',
-        type: 'DEPOSIT',
-        amount: pnl.totalPnL * (user.userPlan?.plan.profitSharingCustomer || 0) / 100,
-        status: 'SUCCESS',
-        description: `PnL for ${user.username}`,
-      });
-    }));
+    Promise.all(
+      users.map(async (user) => {
+        const customerPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingCustomer || 0) / 100;
+        const platformPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100;
+        const agentPnl = platformPnl * 30 / 100;
+        totalDivineAlgoShare += platformPnl * 70 / 100;
+        await this.createTransaction({
+          walletId: user.wallet?.id || '',
+          type: 'DEPOSIT',
+          amount: customerPnl,
+          status: 'SUCCESS',
+          description: `PnL for ${user.username}`,
+        });
+        console.log(customerPnl, agentPnl, platformPnl);
+        console.log('reffered by', user.referralsAsCustomer);
+
+        await Promise.all(
+          user.referralsAsCustomer.map(async (referral) => {
+            await this.createTransaction({
+              walletId: referral.agent?.wallet?.id || '',
+              type: 'DEPOSIT',
+              amount: (pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100) * 30 / 100,
+              status: 'SUCCESS',
+              description: `PnL for ${user.username}`,
+            });
+          })
+        );
+      })
+    );
+    // update divine algo share
+    await prisma.pnL.update({
+      where: { id: pnl.id },
+      data: {
+        divineAlgoShare: totalDivineAlgoShare,
+      },
+    });
 
     return pnl;
   },
