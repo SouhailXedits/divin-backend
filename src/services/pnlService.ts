@@ -95,7 +95,7 @@ export const pnlService = {
         const platformPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100;
         const agentPnl = platformPnl * 30 / 100;
         totalDivineAlgoShare += platformPnl * 70 / 100;
-        await this.createTransaction({
+        await this.createPnlTransaction({
           walletId: user.wallet?.id || '',
           type: 'DEPOSIT',
           amount: customerPnl,
@@ -105,17 +105,17 @@ export const pnlService = {
         console.log(customerPnl, agentPnl, platformPnl);
         console.log('reffered by', user.referralsAsCustomer);
 
-        await Promise.all(
-          user.referralsAsCustomer.map(async (referral) => {
-            await this.createTransaction({
-              walletId: referral.agent?.wallet?.id || '',
-              type: 'DEPOSIT',
-              amount: (pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100) * 30 / 100,
-              status: 'SUCCESS',
-              description: `PnL for ${user.username}`,
-            });
-          })
-        );
+        // await Promise.all(
+        //   user.referralsAsCustomer.map(async (referral) => {
+        //     await this.createPnlTransaction({
+        //       walletId: referral.agent?.wallet?.id || '',
+        //       type: 'WITHDRAWAL',
+        //       amount: (pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100) * 30 / 100,
+        //       status: 'SUCCESS',
+        //       description: `PnL for ${user.username}`,
+        //     });
+        //   })
+        // );
       })
     );
     // update divine algo share
@@ -175,7 +175,7 @@ export const pnlService = {
       where: { id },
     });
   },
-  async createTransaction(data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
+  async createPnlTransaction(data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
     const transaction = await prisma.transaction.create({
       data,
     });
@@ -185,7 +185,7 @@ export const pnlService = {
     });
 
     if (wallet) {
-      wallet.balance += data.amount;
+      wallet.balance -= data.amount;
       await prisma.wallet.update({ where: { id: data.walletId }, data: { balance: wallet.balance } });
     }
     return transaction;
