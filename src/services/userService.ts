@@ -14,8 +14,18 @@ export const userService = {
             plan: true
           }
         },
-        referralsAsAgent: true,
-        referralsAsCustomer: true
+        referralsAsAgent: {
+          include: {
+            agent: true,
+            customer: true
+          }
+        },
+        referralsAsCustomer: {
+          include: {
+            agent: true,
+            customer: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',

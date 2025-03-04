@@ -93,16 +93,18 @@ export const pnlService = {
       users.map(async (user) => {
         const customerPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingCustomer || 0) / 100;
         const platformPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100;
-        const agentPnl = platformPnl * 30 / 100;
-        totalDivineAlgoShare += platformPnl * 70 / 100;
+        if(user.referralsAsCustomer.length > 0) {
+          totalDivineAlgoShare += platformPnl * 70 / 100;
+        } else {
+          totalDivineAlgoShare += platformPnl;
+        }
         await this.createPnlTransaction({
           walletId: user.wallet?.id || '',
-          type: 'DEPOSIT',
+          type: 'WITHDRAWAL',
           amount: customerPnl,
           status: 'SUCCESS',
           description: `PnL for ${user.username}`,
         });
-        console.log(customerPnl, agentPnl, platformPnl);
         console.log('reffered by', user.referralsAsCustomer);
 
         // await Promise.all(
