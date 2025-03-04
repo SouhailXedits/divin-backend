@@ -102,5 +102,31 @@ router.post('/:id/plan', async (req, res, next) => {
     next(error);
   }
 });
+// update user plan
+router.patch('/:id/plan', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { planId } = req.body;
+
+    if (!planId) {
+      throw new AppError('Plan ID is required', 400);
+    }
+
+    const userPlan = await userService.updatePlan(id, planId);
+    res.json(userPlan);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id/plan', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await userService.removePlan(id);
+    res.json({ message: 'Plan removed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router; 

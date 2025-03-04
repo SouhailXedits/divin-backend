@@ -108,6 +108,7 @@ export const userService = {
         }
       });
     }
+    
 
     // Create new plan assignment
     return prisma.userPlan.create({
@@ -119,6 +120,19 @@ export const userService = {
       include: {
         plan: true
       }
+    });
+  },
+
+  async updatePlan(userId: string, planId: string) {
+    return prisma.userPlan.update({
+      where: { userId },
+      data: { planId }
+    });
+  },
+
+  async removePlan(userId: string) {
+    return prisma.userPlan.delete({
+      where: { userId }
     });
   }
 }; 
