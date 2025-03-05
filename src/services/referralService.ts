@@ -133,4 +133,18 @@ export const referralService = {
       },
     });
   },
+
+  async getAgentTotalEarnings(agentId: string) {
+    // Use a raw SQL query to sum up all earnings for an agent
+    const result = await prisma.$queryRaw<[{ totalEarnings: number | null }]>`
+      SELECT SUM("agentTotalEarnings") as "totalEarnings"
+      FROM "Referral"
+      WHERE "agentId" = ${agentId}
+    `;
+    
+    // result will be an array with one object like [{ totalEarnings: 123.45 }]
+    const totalEarnings = result[0]?.totalEarnings || 0;
+    
+    return Number(totalEarnings);
+  },
 }; 

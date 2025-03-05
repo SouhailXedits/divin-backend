@@ -23,6 +23,17 @@ router.get('/agent/:agentId', async (req, res, next) => {
   }
 });
 
+// Get total earnings for an agent
+router.get('/agent/:agentId/earnings', async (req, res, next) => {
+  try {
+    const { agentId } = req.params;
+    const totalEarnings = await referralService.getAgentTotalEarnings(agentId);
+    res.json({ agentId, totalEarnings });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/', async (req, res, next) => {
   console.log('req.body', req.body);
   try {

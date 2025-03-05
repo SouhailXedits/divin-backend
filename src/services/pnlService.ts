@@ -95,6 +95,32 @@ export const pnlService = {
         const platformPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100;
         if(user.referralsAsCustomer.length > 0) {
           totalDivineAlgoShare += platformPnl * 70 / 100;
+          
+          // Calculate agent earnings (30% of platform share)
+          const agentEarnings = platformPnl * 30 / 100;
+          
+          // Update the referral record with the agent's earnings
+          await Promise.all(
+            user.referralsAsCustomer.map(async (referral) => {
+              // Update agentTotalEarnings using executeRaw to avoid type issues
+              await prisma.$executeRaw`
+                UPDATE "Referral" 
+                SET "agentTotalEarnings" = "agentTotalEarnings" + ${agentEarnings} 
+                WHERE "id" = ${referral.id}
+              `;
+              
+              // Optional: Create transaction for the agent's wallet
+              if (referral.agent?.wallet?.id) {
+                await this.createPnlTransaction({
+                  walletId: referral.agent.wallet.id,
+                  type: 'DEPOSIT',
+                  amount: agentEarnings,
+                  status: 'SUCCESS',
+                  description: `PnL for referral of ${user.username}`,
+                });
+              }
+            })
+          );
         } else {
           totalDivineAlgoShare += platformPnl;
         }
@@ -187,7 +213,11 @@ export const pnlService = {
     });
 
     if (wallet) {
-      wallet.balance -= data.amount;
+      if(data.type === 'DEPOSIT') {
+        wallet.balance += data.amount;
+      } else {
+        wallet.balance -= data.amount;
+      }
       await prisma.wallet.update({ where: { id: data.walletId }, data: { balance: wallet.balance } });
     }
     return transaction;
