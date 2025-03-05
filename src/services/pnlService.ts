@@ -127,7 +127,7 @@ export const pnlService = {
         await this.createPnlTransaction({
           walletId: user.wallet?.id || '',
           type: 'WITHDRAWAL',
-          amount: customerPnl,
+          amount: platformPnl,
           status: 'SUCCESS',
           description: `PnL for ${user.username}`,
         });
