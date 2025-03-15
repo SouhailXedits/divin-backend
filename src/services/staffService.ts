@@ -37,6 +37,7 @@ export const staffService = {
   }) {
     return prisma.staff.create({
       data: {
+        id: `S${Math.floor(1000 + Math.random() * 9000)}`,
         email: data.email,
         name: data.name,
         role: data.role,

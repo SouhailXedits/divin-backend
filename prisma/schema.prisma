@@ -162,7 +162,7 @@ model Referral {
 }
 
 model Staff {
-  id          String    @id @default(uuid())
+  id          String    @id @unique
   name        String
   email       String    @unique
   role        String // ADMIN, MANAGER, SUPPORT, COO, CTO, CMO, CAO
