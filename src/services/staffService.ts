@@ -9,6 +9,28 @@ const DEFAULT_PERMISSIONS = {
   transactions: ['read'],
 };
 
+// Generate portal name based on role
+const generatePortalName = (role: StaffRole): string => {
+  switch(role) {
+    case 'ADMIN':
+      return 'Admin Portal';
+    case 'MANAGER':
+      return 'Manager Portal';
+    case 'SUPPORT':
+      return 'Support Portal';
+    case 'COO':
+      return 'COO Portal';
+    case 'CTO':
+      return 'CTO Portal';
+    case 'CMO':
+      return 'CMO Portal';
+    case 'CAO':
+      return 'CAO Portal';
+    default:
+      return `${role} Portal`;
+  }
+};
+
 export const staffService = {
   async findAll() {
     return prisma.staff.findMany({
@@ -34,7 +56,11 @@ export const staffService = {
     email: string;
     name: string;
     role: StaffRole;
+    portalName?: string;
   }) {
+    // Generate portal name based on role if not provided
+    const portalName = data.portalName || generatePortalName(data.role);
+
     return prisma.staff.create({
       data: {
         id: `S${Math.floor(1000 + Math.random() * 9000)}`,
@@ -43,7 +69,8 @@ export const staffService = {
         role: data.role,
         status: StaffStatus.ACTIVE,
         permissions: JSON.stringify(DEFAULT_PERMISSIONS),
-      },
+        portalName,
+      } as any, // Type assertion to bypass type checking
     });
   },
 
@@ -53,6 +80,11 @@ export const staffService = {
     // If updating permissions, stringify them if they're not already a string
     if (data.permissions && typeof data.permissions !== 'string') {
       updateData.permissions = JSON.stringify(data.permissions);
+    }
+
+    // If role is changing but portalName isn't provided, update the portalName
+    if (data.role && !data.portalName) {
+      updateData.portalName = generatePortalName(data.role as StaffRole);
     }
 
     return prisma.staff.update({

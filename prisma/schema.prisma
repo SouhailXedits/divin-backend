@@ -168,6 +168,7 @@ model Staff {
   role        String // ADMIN, MANAGER, SUPPORT, COO, CTO, CMO, CAO
   status      String    @default("ACTIVE") // ACTIVE, INACTIVE
   permissions String // Will store JSON as a string
+  portalName  String    @default("Default Portal") // New field for role-based portal
   createdAt   DateTime  @default(now()) @map("created_at")
   lastLogin   DateTime? @map("last_login")
   updatedAt   DateTime  @updatedAt @map("updated_at")
