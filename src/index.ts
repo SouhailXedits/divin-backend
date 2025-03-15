@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import http from 'http';
+import { Server } from 'socket.io';
 
 // Import routes
 import userRoutes from './routes/userRoutes';
@@ -17,6 +19,21 @@ import { errorHandler } from './middleware/errorHandler';
 const app = express();
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001'
+    ],
+    methods: ['GET', 'POST']
+  }
+});
 
 // Initialize admin user if not exists
 async function initializeAdminUser() {
@@ -47,11 +64,69 @@ async function initializeAdminUser() {
   }
 }
 
+// Function to calculate and emit real-time data updates
+async function emitRealTimeData() {
+  try {
+    // Calculate total divine algo share
+    const pnlData = await prisma.pnL.findMany({
+      where: {
+        totalPnL: {
+          gt: 0
+        }
+      },
+      select: {
+        divineAlgoShare: true
+      }
+    });
+    
+    const totalDivineAlgoShare = pnlData.reduce((total, entry) => {
+      return total + (entry.divineAlgoShare || 0);
+    }, 0);
+    
+    // Calculate total wallet balance
+    const wallets = await prisma.wallet.findMany({
+      where: {
+        archivedAt: null
+      },
+      select: {
+        balance: true
+      }
+    });
+    
+    const totalWalletBalance = wallets.reduce((total, wallet) => {
+      return total + wallet.balance;
+    }, 0);
+    
+    // Emit the calculated values
+    io.emit('divineAlgoShareUpdate', { total: totalDivineAlgoShare });
+    io.emit('walletBalanceUpdate', { total: totalWalletBalance });
+    
+    console.log('Emitted real-time data updates');
+  } catch (error) {
+    console.error('Error calculating real-time data:', error);
+  }
+}
+
 // Initialize admin user when server starts
 let adminUser: { id: string } | null = null;
 initializeAdminUser().then(admin => {
   adminUser = admin;
 }).catch(console.error);
+
+// Socket.io connection handler
+io.on('connection', (socket: any) => {
+  console.log('A client connected');
+  
+  // Send initial real-time data
+  emitRealTimeData();
+  
+  socket.on('disconnect', () => {
+    console.log('A client disconnected');
+  });
+});
+
+// Set up a periodic update every 30 seconds
+setInterval(emitRealTimeData, 30000);
 
 // Middleware
 app.use(cors());
@@ -254,6 +329,52 @@ app.delete('/api/chat/:chatId', async (req, res) => {
   }
 });
 
+// Modify routes to emit socket events on relevant changes
+// For example, when a new transaction is created or wallet balance updated
+app.use('/api/wallets', (req, res, next) => {
+  const originalSend = res.send;
+  
+  res.send = function(body) {
+    // Check if this is a POST or PUT request for a transaction
+    if ((req.method === 'POST' || req.method === 'PUT') && 
+        (req.url.includes('/transaction') || req.url.includes('/balance'))) {
+      
+      // Emit updates after successful operation
+      emitRealTimeData();
+      
+      // If this is a new transaction, emit that specific transaction
+      if (req.method === 'POST' && req.url.includes('/transaction') && body) {
+        try {
+          const parsedBody = JSON.parse(body);
+          io.emit('newTransaction', parsedBody);
+        } catch (e) {
+          console.error('Error parsing transaction response:', e);
+        }
+      }
+    }
+    
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
+
+// Apply similar middleware to PnL route to emit updates when new PnL data is added
+app.use('/api/pnl', (req, res, next) => {
+  const originalSend = res.send;
+  
+  res.send = function(body) {
+    // If this is a POST or PUT request, emit updates
+    if (req.method === 'POST' || req.method === 'PUT') {
+      emitRealTimeData();
+    }
+    
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/accounts', accountRoutes);
@@ -266,7 +387,7 @@ app.use('/api/staff', staffRoutes);
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+// Start server (use 'server' instead of 'app')
+server.listen(port, () => {
+  console.log(`Server running with Socket.io at http://localhost:${port}`);
 }); 
