@@ -23,6 +23,7 @@ router.post('/', async (req, res, next) => {
       profitSharingCustomer,
       profitSharingPlatform,
       upfrontFee,
+      visability,
     } = req.body;
 
     const plan = await planService.create({
@@ -33,6 +34,7 @@ router.post('/', async (req, res, next) => {
       profitSharingCustomer,
       profitSharingPlatform,
       upfrontFee,
+      visability,
     });
 
     res.json(plan);
@@ -52,6 +54,7 @@ router.put('/:id', async (req, res, next) => {
       profitSharingCustomer,
       profitSharingPlatform,
       upfrontFee,
+      visability,
     } = req.body;
 
     const plan = await planService.update(id, {
@@ -62,6 +65,7 @@ router.put('/:id', async (req, res, next) => {
       profitSharingCustomer,
       profitSharingPlatform,
       upfrontFee,
+      visability,
     });
 
     res.json(plan);

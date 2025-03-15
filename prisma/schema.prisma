@@ -19,14 +19,14 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts    Account[]
-  userPnLs    UserPnL[]
-  wallet     Wallet?
-  userPlan   UserPlan?
-  chats      Chat[]
-  messages   Message[]
-  referralsAsAgent     Referral[] @relation("AgentReferrals")
-  referralsAsCustomer  Referral[] @relation("CustomerReferrals")
+  accounts            Account[]
+  userPnLs            UserPnL[]
+  wallet              Wallet?
+  userPlan            UserPlan?
+  chats               Chat[]
+  messages            Message[]
+  referralsAsAgent    Referral[] @relation("AgentReferrals")
+  referralsAsCustomer Referral[] @relation("CustomerReferrals")
 }
 
 model Account {
@@ -39,20 +39,21 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Plan {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  minDeposit Float
-  maxDeposit Float
-  maxAccounts Int
+  id                    String   @id @default(uuid())
+  name                  String   @unique
+  minDeposit            Float
+  maxDeposit            Float
+  maxAccounts           Int
   profitSharingCustomer Int
   profitSharingPlatform Int
-  upfrontFee Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  upfrontFee            Float
+  visability            String   @default("PUBLIC")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   userPlans UserPlan[]
 }
@@ -65,8 +66,8 @@ model UserPlan {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
-  plan      Plan     @relation(fields: [planId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  plan Plan @relation(fields: [planId], references: [id])
 }
 
 model PnL {
@@ -79,7 +80,7 @@ model PnL {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  userPnls        UserPnL[]
+  userPnls UserPnL[]
 }
 
 model UserPnL {
@@ -89,21 +90,21 @@ model UserPnL {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
-  pnl       PnL      @relation(fields: [pnlId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  pnl  PnL  @relation(fields: [pnlId], references: [id])
 
   @@unique([userId, pnlId])
 }
 
 model Wallet {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  balance   Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(uuid())
+  userId     String    @unique
+  balance    Float     @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
 
-  user        User          @relation(fields: [userId], references: [uniqueId])
+  user         User          @relation(fields: [userId], references: [uniqueId])
   transactions Transaction[]
 }
 
@@ -117,7 +118,7 @@ model Transaction {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
 }
 
 model Chat {
@@ -128,8 +129,8 @@ model Chat {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  customer    User      @relation(fields: [customerId], references: [id])
-  messages    Message[]
+  customer User      @relation(fields: [customerId], references: [id])
+  messages Message[]
 }
 
 model Message {
@@ -141,35 +142,35 @@ model Message {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  chat      Chat     @relation(fields: [chatId], references: [id])
-  sender    User     @relation(fields: [senderId], references: [id])
+  chat   Chat @relation(fields: [chatId], references: [id])
+  sender User @relation(fields: [senderId], references: [id])
 }
 
 model Referral {
-  id                String   @id @default(uuid())
-  agentId          String
-  customerId       String
-  signupDate       DateTime @default(now())
-  isManualAssignment Boolean @default(false)
-  isActive         Boolean  @default(false)
-  agentTotalEarnings Float   @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  agentId            String
+  customerId         String
+  signupDate         DateTime @default(now())
+  isManualAssignment Boolean  @default(false)
+  isActive           Boolean  @default(false)
+  agentTotalEarnings Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  agent            User     @relation("AgentReferrals", fields: [agentId], references: [id])
-  customer         User     @relation("CustomerReferrals", fields: [customerId], references: [id])
+  agent    User @relation("AgentReferrals", fields: [agentId], references: [id])
+  customer User @relation("CustomerReferrals", fields: [customerId], references: [id])
 }
 
 model Staff {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
-  email       String   @unique
-  role        String   // ADMIN, MANAGER, SUPPORT, COO, CTO, CMO, CAO
-  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
-  permissions String   // Will store JSON as a string
-  createdAt   DateTime @default(now()) @map("created_at")
+  email       String    @unique
+  role        String // ADMIN, MANAGER, SUPPORT, COO, CTO, CMO, CAO
+  status      String    @default("ACTIVE") // ACTIVE, INACTIVE
+  permissions String // Will store JSON as a string
+  createdAt   DateTime  @default(now()) @map("created_at")
   lastLogin   DateTime? @map("last_login")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@map("staff")
-} 
+}

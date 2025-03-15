@@ -71,7 +71,9 @@ export interface Plan {
   upfrontFee: number;
   createdAt: Date;
   updatedAt: Date;
+  visability: 'PUBLIC' | 'PRIVATE';
 }
+
 
 export interface Wallet {
   id: string;
