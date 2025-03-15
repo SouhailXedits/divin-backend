@@ -157,12 +157,16 @@ async function main() {
         dates.map((date) =>
           prisma.pnL.create({
             data: {
-              userId: customer.id,
               date,
               symbol: 'EURUSD',
               totalPnL: Math.random() * 1000 - 200, // Random PnL between -200 and 800
               customerShare: 70,
               divineAlgoShare: 30,
+              userPnls: {
+                create: {
+                  userId: customer.id
+                }
+              }
             },
           })
         )
