@@ -89,4 +89,14 @@ router.patch('/transactions/:id/status', async (req, res, next) => {
   }
 });
 
+router.patch('/:id/unarchive', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const wallet = await walletService.unarchive(id);
+    res.json(wallet);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router; 

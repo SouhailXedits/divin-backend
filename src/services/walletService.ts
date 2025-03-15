@@ -67,6 +67,13 @@ export const walletService = {
     });
   },
 
+  async unarchive(id: string) {
+    return prisma.wallet.update({
+      where: { id },
+      data: { archivedAt: null }
+    });
+  },
+
   async updateBalance(userId: string, balance: number) {
     return prisma.wallet.update({
       where: { userId },
