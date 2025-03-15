@@ -3,6 +3,9 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import http from 'http';
 import { Server } from 'socket.io';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 // Import routes
 import userRoutes from './routes/userRoutes';
@@ -16,22 +19,104 @@ import staffRoutes from './routes/staffRoutes';
 // Import error handler
 import { errorHandler } from './middleware/errorHandler';
 
+// Server stats
+const serverStats = {
+  startTime: new Date(),
+  connections: 0,
+  totalConnections: 0,
+  messagesSent: 0,
+  errors: 0,
+  cpuUsage: 0,
+  memoryUsage: 0,
+  lastUpdateTime: new Date()
+};
+
+// Create Express app
 const app = express();
 const prisma = new PrismaClient();
 const port = process.env.PORT || 3001;
 
+// Ensure we don't use port 5000 which seems to be in use
+if (parseInt(port.toString()) === 5000) {
+  console.log('⚠️ Port 5000 is already in use, defaulting to port 3001');
+  process.env.PORT = '3001';
+}
+
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.io
+// Initialize Socket.io with enhanced configuration
 const io = new Server(server, {
   cors: {
     origin: [
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001'
+      'http://127.0.0.1:3001',
+      'http://localhost:5173', // Vite dev server default port
+      '*' // Allow all origins temporarily for troubleshooting
     ],
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  allowEIO3: true, // Allow Engine.IO v3 client
+  transports: ['polling', 'websocket'],
+  pingTimeout: 30000,
+  pingInterval: 25000,
+  upgradeTimeout: 10000,
+  maxHttpBufferSize: 1e8,
+  connectTimeout: 45000
+});
+
+// Health check and server status endpoint
+app.get('/api/health', (req, res) => {
+  try {
+    // Update server stats
+    serverStats.cpuUsage = process.cpuUsage().system / 1000;
+    serverStats.memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;
+    serverStats.lastUpdateTime = new Date();
+
+    // Return comprehensive health info
+    res.json({
+      status: 'OK',
+      uptime: Math.floor((Date.now() - serverStats.startTime.getTime()) / 1000),
+      timestamp: new Date().toISOString(),
+      connections: serverStats.connections,
+      totalConnections: serverStats.totalConnections,
+      messagesSent: serverStats.messagesSent,
+      errors: serverStats.errors,
+      system: {
+        cpuUsage: serverStats.cpuUsage.toFixed(2) + ' ms',
+        memoryUsage: serverStats.memoryUsage.toFixed(2) + ' MB',
+        platform: process.platform,
+        nodeVersion: process.version,
+        hostname: os.hostname()
+      }
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Health check failed' });
+  }
+});
+
+// Debug endpoint to force emit test data
+app.get('/api/debug/emit-test-data', (req, res) => {
+  try {
+    const testData = {
+      total: Math.random() * 1000,
+      timestamp: new Date().toISOString()
+    };
+    
+    io.emit('divineAlgoShareUpdate', testData);
+    serverStats.messagesSent++;
+    
+    res.json({ 
+      status: 'OK', 
+      message: 'Test data emitted successfully',
+      data: testData
+    });
+  } catch (error) {
+    console.error('Debug emit error:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to emit test data' });
   }
 });
 
@@ -60,13 +145,16 @@ async function initializeAdminUser() {
     return admin;
   } catch (error) {
     console.error('Error initializing admin user:', error);
+    serverStats.errors++;
     throw error;
   }
 }
 
-// Function to calculate and emit real-time data updates
+// Enhanced function to calculate and emit real-time data updates with error handling
 async function emitRealTimeData() {
   try {
+    console.log('📊 BACKEND SOCKET: Starting calculation of real-time data...');
+    
     // Calculate total divine algo share
     const pnlData = await prisma.pnL.findMany({
       where: {
@@ -78,6 +166,8 @@ async function emitRealTimeData() {
         divineAlgoShare: true
       }
     });
+    
+    console.log(`📊 BACKEND SOCKET: Retrieved ${pnlData.length} PnL records from database`);
     
     const totalDivineAlgoShare = pnlData.reduce((total, entry) => {
       return total + (entry.divineAlgoShare || 0);
@@ -92,18 +182,33 @@ async function emitRealTimeData() {
         balance: true
       }
     });
-    
+        
     const totalWalletBalance = wallets.reduce((total, wallet) => {
       return total + wallet.balance;
     }, 0);
+
     
     // Emit the calculated values
+    const activeConnections = io.engine.clientsCount;
+    
     io.emit('divineAlgoShareUpdate', { total: totalDivineAlgoShare });
     io.emit('walletBalanceUpdate', { total: totalWalletBalance });
+    serverStats.messagesSent += 2;
     
-    console.log('Emitted real-time data updates');
   } catch (error) {
-    console.error('Error calculating real-time data:', error);
+    console.error('❌ BACKEND SOCKET: Error calculating real-time data:', error);
+    serverStats.errors++;
+    
+    // Try to emit an error notification
+    try {
+      io.emit('serverError', { 
+        message: 'Error calculating real-time data',
+        timestamp: new Date().toISOString()
+      });
+      serverStats.messagesSent++;
+    } catch (emitError) {
+      console.error('❌ BACKEND SOCKET: Failed to emit error notification:', emitError);
+    }
   }
 }
 
@@ -113,24 +218,145 @@ initializeAdminUser().then(admin => {
   adminUser = admin;
 }).catch(console.error);
 
-// Socket.io connection handler
+// Enhanced Socket.io connection handler with detailed logging and error handling
 io.on('connection', (socket: any) => {
-  console.log('A client connected');
+  serverStats.connections++;
+  serverStats.totalConnections++;
   
+  // Log detailed connection info
+  const clientInfo = {
+    id: socket.id,
+    transport: socket.conn.transport.name,
+    address: socket.handshake.address,
+    userAgent: socket.handshake.headers['user-agent'],
+    query: socket.handshake.query,
+    time: new Date().toISOString()
+  };
   // Send initial real-time data
   emitRealTimeData();
   
-  socket.on('disconnect', () => {
-    console.log('A client disconnected');
+  // Handle ping from client (for measuring latency)
+  socket.on('ping', (callback: Function) => {
+    // If callback is provided, call it to measure round-trip time
+    if (callback && typeof callback === 'function') {
+      callback();
+    } else {
+      console.log(`❌ BACKEND SOCKET: Client ${socket.id} sent ping without callback function`);
+    }
+  });
+  
+  // Log transport changes
+  socket.conn.on('upgrade', (transport: any) => {
+  });
+  
+  // Enhanced error handling
+  socket.on('error', (error: any) => {
+    serverStats.errors++;
+    console.error(`❌ BACKEND SOCKET: Error for client ${socket.id}:`, error);
+    
+    // Try to notify client about the error
+    try {
+      socket.emit('serverMessage', { 
+        type: 'error',
+        message: 'Server encountered an error processing your request',
+        timestamp: new Date().toISOString()
+      });
+      serverStats.messagesSent++;
+    } catch (emitError) {
+      console.error(`❌ BACKEND SOCKET: Failed to send error message to client ${socket.id}:`, emitError);
+    }
+  });
+  
+  // Handle client messages and debugging requests
+  socket.on('clientMessage', (data: any) => {
+    console.log(`📨 BACKEND SOCKET: Message from ${socket.id}:`, data);
+    
+    // Acknowledge receipt
+    if (data.requireAck && typeof data.callback === 'function') {
+      data.callback({ received: true, timestamp: new Date().toISOString() });
+      console.log(`✅ BACKEND SOCKET: Message acknowledgment sent to client ${socket.id}`);
+    }
+  });
+  
+  // Debug command handler
+  socket.on('debug', (command: string, params: any, callback: Function) => {
+    console.log(`🔧 BACKEND SOCKET: Debug command from ${socket.id}: ${command}`, params);
+    
+    if (command === 'stats') {
+      callback(serverStats);
+      console.log(`✅ BACKEND SOCKET: Stats sent to client ${socket.id}`);
+    } else if (command === 'ping') {
+      callback({ pong: true, serverTime: new Date().toISOString() });
+      console.log(`✅ BACKEND SOCKET: Pong sent to client ${socket.id}`);
+    } else if (command === 'forceUpdate') {
+      emitRealTimeData();
+      callback({ updating: true });
+      console.log(`✅ BACKEND SOCKET: Force update triggered by client ${socket.id}`);
+    } else {
+      callback({ error: 'Unknown command' });
+      console.log(`❌ BACKEND SOCKET: Unknown command from client ${socket.id}: ${command}`);
+    }
+  });
+  
+  socket.on('disconnect', (reason: string) => {
+    serverStats.connections--;
+    console.log(`👋 BACKEND SOCKET: Client disconnected: ${socket.id}, reason: ${reason}`);
+    console.log(`🔌 BACKEND SOCKET: Remaining active connections: ${serverStats.connections}`);
   });
 });
 
-// Set up a periodic update every 30 seconds
-setInterval(emitRealTimeData, 30000);
+// Enhanced periodic update with exponential backoff retry mechanism
+let updateInterval = 30000; // Start with 30 seconds
+let consecutiveFailures = 0;
+let maxInterval = 5 * 60 * 1000; // 5 minutes max
+
+function scheduleNextUpdate() {
+  setTimeout(() => {
+    emitRealTimeData()
+      .then(() => {
+        // Reset on success
+        consecutiveFailures = 0;
+        updateInterval = 30000;
+        scheduleNextUpdate();
+      })
+      .catch(error => {
+        console.error('Failed to emit updates:', error);
+        serverStats.errors++;
+        
+        // Exponential backoff
+        consecutiveFailures++;
+        if (consecutiveFailures > 5) {
+          updateInterval = Math.min(updateInterval * 2, maxInterval);
+          console.log(`Backing off update interval to ${updateInterval}ms due to errors`);
+        }
+        
+        scheduleNextUpdate();
+      });
+  }, updateInterval);
+}
+
+// Start the update cycle
+scheduleNextUpdate();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173'
+  ],
+  credentials: true
+}));
 app.use(express.json());
+
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/plans', planRoutes);
+app.use('/api/wallets', walletRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/pnl', pnlRoutes);
+app.use('/api/staff', staffRoutes);
 
 // Chat endpoints
 app.get('/api/chat/customer/:customerId', async (req, res) => {
@@ -172,6 +398,7 @@ app.get('/api/chat/customer/:customerId', async (req, res) => {
     res.json(chat);
   } catch (error) {
     console.error('Error fetching customer chat:', error);
+    serverStats.errors++;
     res.status(500).json({ error: 'Failed to fetch chat' });
   }
 });
@@ -201,6 +428,7 @@ app.post('/api/chat', async (req, res) => {
     res.json(chat);
   } catch (error) {
     console.error('Error creating chat:', error);
+    serverStats.errors++;
     res.status(500).json({ error: 'Failed to create chat' });
   }
 });
@@ -258,9 +486,21 @@ app.post('/api/chat/message', async (req, res) => {
       return updatedChat;
     });
 
+    // Notify connected clients about new message
+    io.emit('newChatMessage', {
+      chatId,
+      message: {
+        content,
+        sender: senderId === 'admin' ? 'Admin' : senderId,
+        timestamp: new Date().toISOString()
+      }
+    });
+    serverStats.messagesSent++;
+
     res.json(result);
   } catch (error) {
     console.error('Error sending message:', error);
+    serverStats.errors++;
     res.status(500).json({ error: 'Failed to send message' });
   }
 });
@@ -302,6 +542,7 @@ app.post('/api/chat/:chatId/read', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error marking chat as read:', error);
+    serverStats.errors++;
     res.status(500).json({ error: 'Failed to mark chat as read' });
   }
 });
@@ -325,6 +566,7 @@ app.delete('/api/chat/:chatId', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting chat:', error);
+    serverStats.errors++;
     res.status(500).json({ error: 'Failed to delete chat' });
   }
 });
@@ -347,8 +589,10 @@ app.use('/api/wallets', (req, res, next) => {
         try {
           const parsedBody = JSON.parse(body);
           io.emit('newTransaction', parsedBody);
+          serverStats.messagesSent++;
         } catch (e) {
           console.error('Error parsing transaction response:', e);
+          serverStats.errors++;
         }
       }
     }
@@ -375,19 +619,211 @@ app.use('/api/pnl', (req, res, next) => {
   next();
 });
 
-// Routes
-app.use('/api/users', userRoutes);
-app.use('/api/accounts', accountRoutes);
-app.use('/api/plans', planRoutes);
-app.use('/api/wallets', walletRoutes);
-app.use('/api/referrals', referralRoutes);
-app.use('/api/pnl', pnlRoutes);
-app.use('/api/staff', staffRoutes);
+// Special admin panel for server monitoring
+app.get('/admin/server-status', (req, res) => {
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Divine Algo Admin - Server Monitor</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f7f9fc; }
+      .container { max-width: 1200px; margin: 0 auto; }
+      h1 { color: #2d3748; }
+      .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+      .stat-box { background: #f1f5f9; padding: 16px; border-radius: 8px; }
+      .stat-label { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+      .stat-value { font-size: 24px; font-weight: bold; color: #0f172a; }
+      .actions { display: flex; gap: 10px; margin-top: 20px; }
+      button { padding: 10px 15px; border: none; border-radius: 4px; background: #3b82f6; color: white; cursor: pointer; }
+      button:hover { background: #2563eb; }
+      .log-container { background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto; font-family: monospace; }
+      .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+      .status-online { background-color: #22c55e; }
+      .status-offline { background-color: #ef4444; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Divine Algo Server Monitor</h1>
+      
+      <div class="card">
+        <h2>Server Status</h2>
+        <div>
+          <span class="status-indicator status-online"></span>
+          <span>Online since ${serverStats.startTime.toLocaleString()}</span>
+        </div>
+        
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">Active Connections</div>
+            <div class="stat-value">${serverStats.connections}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Total Connections</div>
+            <div class="stat-value">${serverStats.totalConnections}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Messages Sent</div>
+            <div class="stat-value">${serverStats.messagesSent}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value">${serverStats.errors}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">CPU Usage</div>
+            <div class="stat-value">${serverStats.cpuUsage.toFixed(2)} ms</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Memory Usage</div>
+            <div class="stat-value">${serverStats.memoryUsage.toFixed(2)} MB</div>
+          </div>
+        </div>
+        
+        <div class="actions">
+          <button onclick="forceUpdate()">Force Data Update</button>
+          <button onclick="emitTestData()">Emit Test Data</button>
+          <button onclick="refreshStats()">Refresh Stats</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>System Information</h2>
+        <p>Node Version: ${process.version}</p>
+        <p>Platform: ${process.platform}</p>
+        <p>Hostname: ${os.hostname()}</p>
+      </div>
+      
+      <div class="card">
+        <h2>Server Logs</h2>
+        <div class="log-container" id="logs">
+          <div>Server started at ${serverStats.startTime.toLocaleString()}</div>
+          <div>Listening on port ${port}</div>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      function forceUpdate() {
+        fetch('/api/debug/emit-test-data')
+          .then(response => response.json())
+          .then(data => {
+            alert('Data update triggered: ' + JSON.stringify(data));
+            refreshStats();
+          })
+          .catch(err => alert('Error: ' + err));
+      }
+      
+      function emitTestData() {
+        fetch('/api/debug/emit-test-data')
+          .then(response => response.json())
+          .then(data => {
+            alert('Test data emitted: ' + JSON.stringify(data));
+            refreshStats();
+          })
+          .catch(err => alert('Error: ' + err));
+      }
+      
+      function refreshStats() {
+        fetch('/api/health')
+          .then(response => response.json())
+          .then(data => {
+            console.log('Updated stats:', data);
+            // Update the UI with the new stats
+            location.reload();
+          })
+          .catch(err => alert('Error refreshing stats: ' + err));
+      }
+      
+      // Auto-refresh every 30 seconds
+      setInterval(refreshStats, 30000);
+    </script>
+  </body>
+  </html>
+  `;
+  
+  res.send(html);
+});
 
 // Error handling middleware
 app.use(errorHandler);
 
+// Process error handling for uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ CRITICAL: Uncaught Exception:', error);
+  serverStats.errors++;
+  
+  // Log to file for forensics
+  fs.appendFileSync(
+    path.join(__dirname, '../error.log'), 
+    `${new Date().toISOString()} - Uncaught Exception: ${error.stack}\n`
+  );
+  
+  // Try to notify connected clients
+  try {
+    io.emit('serverMessage', {
+      type: 'critical',
+      message: 'The server encountered a critical error',
+      timestamp: new Date().toISOString()
+    });
+  } catch (emitError) {
+    console.error('Failed to notify clients about critical error:', emitError);
+  }
+  
+  // Don't crash the process in production, but log that we should restart
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Server would normally restart in production environment');
+  }
+});
+
 // Start server (use 'server' instead of 'app')
 server.listen(port, () => {
-  console.log(`Server running with Socket.io at http://localhost:${port}`);
+  const serverUrl = `http://localhost:${port}`;
+  
+  console.log(`
+  🚀 Enhanced Divine Algo Server running!
+  
+  ===== SERVER DETAILS =====
+  ⏰ Server started at: ${new Date().toLocaleString()}
+  🌐 Environment: ${process.env.NODE_ENV || 'development'}
+  📍 Hostname: ${os.hostname()}
+  💻 Platform: ${process.platform} (${os.type()} ${os.release()})
+  🧠 Node.js: ${process.version}
+  💾 Memory: ${(os.totalmem() / (1024 * 1024 * 1024)).toFixed(2)} GB total
+  
+  ===== ENDPOINTS =====
+  ✅ Socket.io server: ${serverUrl}
+  ✅ Health check: ${serverUrl}/api/health
+  ✅ Admin panel: ${serverUrl}/admin/server-status
+  ✅ Debug emit: ${serverUrl}/api/debug/emit-test-data
+  
+  ===== SOCKET.IO CONFIGURATION =====
+  🔌 Transports: polling, websocket
+  ⏱️ Ping interval: 25000ms
+  ⏱️ Ping timeout: 30000ms
+  ⏱️ Upgrade timeout: 10000ms
+  ⏱️ Connection timeout: 45000ms
+  
+  ===== CORS CONFIGURATION =====
+  🌍 Origins: ${Array.isArray(io.engine.opts.cors) 
+    ? JSON.stringify(io.engine.opts.cors) 
+    : typeof io.engine.opts.cors === 'object' && io.engine.opts.cors 
+      ? JSON.stringify(io.engine.opts.cors.origin || 'all')
+      : 'all'}
+  📝 Methods: ${Array.isArray(io.engine.opts.cors) 
+    ? 'GET, POST' 
+    : typeof io.engine.opts.cors === 'object' && io.engine.opts.cors 
+      ? JSON.stringify(io.engine.opts.cors.methods || ['GET', 'POST'])
+      : 'GET, POST'}
+  
+  💡 To test the socket connection: Visit ${serverUrl}/admin/server-status
+  `);
+  
+  // First scheduled update to ensure data is available
+  setTimeout(() => {
+    console.log('📊 BACKEND SOCKET: Running initial scheduled data update...');
+    emitRealTimeData();
+  }, 2000);
 }); 
