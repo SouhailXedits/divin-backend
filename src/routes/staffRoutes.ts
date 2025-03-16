@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { staffService } from '../services/staffService';
 import { AppError } from '../middleware/errorHandler';
 import { StaffRole, StaffStatus } from '../types';
+import { checkViewPermission, checkEditPermission, checkDeletePermission } from '../middleware/checkPermissions';
 
 const router = Router();
 
@@ -15,7 +16,8 @@ const validateAndNormalizeRole = (role: string): StaffRole => {
   return normalizedRole as StaffRole;
 };
 
-router.get('/', async (req, res, next) => {
+// Get all staff members - requires 'staff' view permission
+router.get('/', checkViewPermission('staff'), async (req, res, next) => {
   try {
     const staff = await staffService.findAll();
     res.json(staff);
@@ -24,7 +26,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+// Create a new staff member - requires 'staff' edit permission
+router.post('/', checkEditPermission('staff'), async (req, res, next) => {
   try {
     const { email, name, role } = req.body;
 
@@ -48,7 +51,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+// Get a specific staff member - requires 'staff' view permission
+router.get('/:id', checkViewPermission('staff'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const staff = await staffService.findById(id);
@@ -63,7 +67,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.patch('/:id', async (req, res, next) => {
+// Update a staff member - requires 'staff' edit permission
+router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { email, name, role, permissions, status } = req.body;
@@ -114,7 +119,8 @@ router.patch('/:id', async (req, res, next) => {
   }
 });
 
-router.patch('/:id/status', async (req, res, next) => {
+// Update a staff member's status - requires 'staff' edit permission
+router.patch('/:id/status', checkEditPermission('staff'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -131,7 +137,8 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
-router.patch('/:id/role', async (req, res, next) => {
+// Update a staff member's role - requires 'staff' edit permission
+router.patch('/:id/role', checkEditPermission('staff'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -145,7 +152,8 @@ router.patch('/:id/role', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+// Delete a staff member - requires 'staff' delete permission
+router.delete('/:id', checkDeletePermission('staff'), async (req, res, next) => {
   try {
     const { id } = req.params;
     await staffService.delete(id);

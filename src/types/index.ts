@@ -71,7 +71,9 @@ export interface Plan {
   upfrontFee: number;
   createdAt: Date;
   updatedAt: Date;
+  visability: 'PUBLIC' | 'PRIVATE';
 }
+
 
 export interface Wallet {
   id: string;
@@ -120,6 +122,7 @@ export interface Staff {
   role: StaffRole;
   status: StaffStatus;
   permissions: string | Record<string, string[]>;
+  portalName: string;
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
