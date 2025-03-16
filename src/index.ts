@@ -1,23 +1,23 @@
-import express from 'express';
-import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
-import http from 'http';
-import { Server } from 'socket.io';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import express from "express";
+import cors from "cors";
+import { PrismaClient } from "@prisma/client";
+import http from "http";
+import { Server } from "socket.io";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 // Import routes
-import userRoutes from './routes/userRoutes';
-import accountRoutes from './routes/accountRoutes';
-import planRoutes from './routes/planRoutes';
-import walletRoutes from './routes/walletRoutes';
-import referralRoutes from './routes/referralRoutes';
-import pnlRoutes from './routes/pnlRoutes';
-import staffRoutes from './routes/staffRoutes';
+import userRoutes from "./routes/userRoutes";
+import accountRoutes from "./routes/accountRoutes";
+import planRoutes from "./routes/planRoutes";
+import walletRoutes from "./routes/walletRoutes";
+import referralRoutes from "./routes/referralRoutes";
+import pnlRoutes from "./routes/pnlRoutes";
+import staffRoutes from "./routes/staffRoutes";
 
 // Import error handler
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler } from "./middleware/errorHandler";
 
 // Server stats
 const serverStats = {
@@ -28,7 +28,7 @@ const serverStats = {
   errors: 0,
   cpuUsage: 0,
   memoryUsage: 0,
-  lastUpdateTime: new Date()
+  lastUpdateTime: new Date(),
 };
 
 // Create Express app
@@ -38,8 +38,8 @@ const port = process.env.PORT || 3001;
 
 // Ensure we don't use port 5000 which seems to be in use
 if (parseInt(port.toString()) === 5000) {
-  console.log('⚠️ Port 5000 is already in use, defaulting to port 3001');
-  process.env.PORT = '3001';
+  console.log("⚠️ Port 5000 is already in use, defaulting to port 3001");
+  process.env.PORT = "3001";
 }
 
 // Create HTTP server
@@ -49,26 +49,26 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://localhost:5173', // Vite dev server default port
-      '*' // Allow all origins temporarily for troubleshooting
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001",
+      "http://localhost:5173", // Vite dev server default port
+      "*", // Allow all origins temporarily for troubleshooting
     ],
-    methods: ['GET', 'POST'],
-    credentials: true
+    methods: ["GET", "POST"],
+    credentials: true,
   },
   allowEIO3: true, // Allow Engine.IO v3 client
-  transports: ['polling', 'websocket'],
+  transports: ["polling", "websocket"],
   pingTimeout: 30000,
   pingInterval: 25000,
   upgradeTimeout: 10000,
   maxHttpBufferSize: 1e8,
-  connectTimeout: 45000
+  connectTimeout: 45000,
 });
 
 // Health check and server status endpoint
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   try {
     // Update server stats
     serverStats.cpuUsage = process.cpuUsage().system / 1000;
@@ -77,7 +77,7 @@ app.get('/api/health', (req, res) => {
 
     // Return comprehensive health info
     res.json({
-      status: 'OK',
+      status: "OK",
       uptime: Math.floor((Date.now() - serverStats.startTime.getTime()) / 1000),
       timestamp: new Date().toISOString(),
       connections: serverStats.connections,
@@ -85,38 +85,40 @@ app.get('/api/health', (req, res) => {
       messagesSent: serverStats.messagesSent,
       errors: serverStats.errors,
       system: {
-        cpuUsage: serverStats.cpuUsage.toFixed(2) + ' ms',
-        memoryUsage: serverStats.memoryUsage.toFixed(2) + ' MB',
+        cpuUsage: serverStats.cpuUsage.toFixed(2) + " ms",
+        memoryUsage: serverStats.memoryUsage.toFixed(2) + " MB",
         platform: process.platform,
         nodeVersion: process.version,
-        hostname: os.hostname()
-      }
+        hostname: os.hostname(),
+      },
     });
   } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({ status: 'ERROR', error: 'Health check failed' });
+    console.error("Health check error:", error);
+    res.status(500).json({ status: "ERROR", error: "Health check failed" });
   }
 });
 
 // Debug endpoint to force emit test data
-app.get('/api/debug/emit-test-data', (req, res) => {
+app.get("/api/debug/emit-test-data", (req, res) => {
   try {
     const testData = {
       total: Math.random() * 1000,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    
-    io.emit('divineAlgoShareUpdate', testData);
+
+    io.emit("divineAlgoShareUpdate", testData);
     serverStats.messagesSent++;
-    
-    res.json({ 
-      status: 'OK', 
-      message: 'Test data emitted successfully',
-      data: testData
+
+    res.json({
+      status: "OK",
+      message: "Test data emitted successfully",
+      data: testData,
     });
   } catch (error) {
-    console.error('Debug emit error:', error);
-    res.status(500).json({ status: 'ERROR', error: 'Failed to emit test data' });
+    console.error("Debug emit error:", error);
+    res
+      .status(500)
+      .json({ status: "ERROR", error: "Failed to emit test data" });
   }
 });
 
@@ -125,26 +127,26 @@ async function initializeAdminUser() {
   try {
     let admin = await prisma.user.findFirst({
       where: {
-        role: 'ADMIN'
-      }
+        role: "ADMIN",
+      },
     });
 
     if (!admin) {
       admin = await prisma.user.create({
         data: {
-          uniqueId: 'admin',
-          username: 'Admin',
-          email: 'admin@divinalgo.com',
-          role: 'ADMIN',
-          status: 'ACTIVE'
-        }
+          uniqueId: "admin",
+          username: "Admin",
+          email: "admin@divinalgo.com",
+          role: "ADMIN",
+          status: "ACTIVE",
+        },
       });
-      console.log('Admin user created successfully');
+      console.log("Admin user created successfully");
     }
-    
+
     return admin;
   } catch (error) {
-    console.error('Error initializing admin user:', error);
+    console.error("Error initializing admin user:", error);
     serverStats.errors++;
     throw error;
   }
@@ -153,155 +155,180 @@ async function initializeAdminUser() {
 // Enhanced function to calculate and emit real-time data updates with error handling
 async function emitRealTimeData() {
   try {
-    console.log('📊 BACKEND SOCKET: Starting calculation of real-time data...');
-    
+    console.log("📊 BACKEND SOCKET: Starting calculation of real-time data...");
+
     // Calculate total divine algo share
     const pnlData = await prisma.pnL.findMany({
       where: {
         totalPnL: {
-          gt: 0
-        }
+          gt: 0,
+        },
       },
       select: {
-        divineAlgoShare: true
-      }
+        divineAlgoShare: true,
+      },
     });
-    
-    console.log(`📊 BACKEND SOCKET: Retrieved ${pnlData.length} PnL records from database`);
-    
+
+    console.log(
+      `📊 BACKEND SOCKET: Retrieved ${pnlData.length} PnL records from database`
+    );
+
     const totalDivineAlgoShare = pnlData.reduce((total, entry) => {
       return total + (entry.divineAlgoShare || 0);
     }, 0);
-    
+
     // Calculate total wallet balance
     const wallets = await prisma.wallet.findMany({
       where: {
-        archivedAt: null
+        archivedAt: null,
       },
       select: {
-        balance: true
-      }
+        balance: true,
+      },
     });
-        
+
     const totalWalletBalance = wallets.reduce((total, wallet) => {
       return total + wallet.balance;
     }, 0);
 
-    
     // Emit the calculated values
     const activeConnections = io.engine.clientsCount;
-    
-    io.emit('divineAlgoShareUpdate', { total: totalDivineAlgoShare });
-    io.emit('walletBalanceUpdate', { total: totalWalletBalance });
+
+    io.emit("divineAlgoShareUpdate", { total: totalDivineAlgoShare });
+    io.emit("walletBalanceUpdate", { total: totalWalletBalance });
     serverStats.messagesSent += 2;
-    
   } catch (error) {
-    console.error('❌ BACKEND SOCKET: Error calculating real-time data:', error);
+    console.error(
+      "❌ BACKEND SOCKET: Error calculating real-time data:",
+      error
+    );
     serverStats.errors++;
-    
+
     // Try to emit an error notification
     try {
-      io.emit('serverError', { 
-        message: 'Error calculating real-time data',
-        timestamp: new Date().toISOString()
+      io.emit("serverError", {
+        message: "Error calculating real-time data",
+        timestamp: new Date().toISOString(),
       });
       serverStats.messagesSent++;
     } catch (emitError) {
-      console.error('❌ BACKEND SOCKET: Failed to emit error notification:', emitError);
+      console.error(
+        "❌ BACKEND SOCKET: Failed to emit error notification:",
+        emitError
+      );
     }
   }
 }
 
 // Initialize admin user when server starts
 let adminUser: { id: string } | null = null;
-initializeAdminUser().then(admin => {
-  adminUser = admin;
-}).catch(console.error);
+initializeAdminUser()
+  .then((admin) => {
+    adminUser = admin;
+  })
+  .catch(console.error);
 
 // Enhanced Socket.io connection handler with detailed logging and error handling
-io.on('connection', (socket: any) => {
+io.on("connection", (socket: any) => {
   serverStats.connections++;
   serverStats.totalConnections++;
-  
+
   // Log detailed connection info
   const clientInfo = {
     id: socket.id,
     transport: socket.conn.transport.name,
     address: socket.handshake.address,
-    userAgent: socket.handshake.headers['user-agent'],
+    userAgent: socket.handshake.headers["user-agent"],
     query: socket.handshake.query,
-    time: new Date().toISOString()
+    time: new Date().toISOString(),
   };
   // Send initial real-time data
   emitRealTimeData();
-  
+
   // Handle ping from client (for measuring latency)
-  socket.on('ping', (callback: Function) => {
+  socket.on("ping", (callback: Function) => {
     // If callback is provided, call it to measure round-trip time
-    if (callback && typeof callback === 'function') {
+    if (callback && typeof callback === "function") {
       callback();
     } else {
-      console.log(`❌ BACKEND SOCKET: Client ${socket.id} sent ping without callback function`);
+      console.log(
+        `❌ BACKEND SOCKET: Client ${socket.id} sent ping without callback function`
+      );
     }
   });
-  
+
   // Log transport changes
-  socket.conn.on('upgrade', (transport: any) => {
-  });
-  
+  socket.conn.on("upgrade", (transport: any) => {});
+
   // Enhanced error handling
-  socket.on('error', (error: any) => {
+  socket.on("error", (error: any) => {
     serverStats.errors++;
     console.error(`❌ BACKEND SOCKET: Error for client ${socket.id}:`, error);
-    
+
     // Try to notify client about the error
     try {
-      socket.emit('serverMessage', { 
-        type: 'error',
-        message: 'Server encountered an error processing your request',
-        timestamp: new Date().toISOString()
+      socket.emit("serverMessage", {
+        type: "error",
+        message: "Server encountered an error processing your request",
+        timestamp: new Date().toISOString(),
       });
       serverStats.messagesSent++;
     } catch (emitError) {
-      console.error(`❌ BACKEND SOCKET: Failed to send error message to client ${socket.id}:`, emitError);
+      console.error(
+        `❌ BACKEND SOCKET: Failed to send error message to client ${socket.id}:`,
+        emitError
+      );
     }
   });
-  
+
   // Handle client messages and debugging requests
-  socket.on('clientMessage', (data: any) => {
+  socket.on("clientMessage", (data: any) => {
     console.log(`📨 BACKEND SOCKET: Message from ${socket.id}:`, data);
-    
+
     // Acknowledge receipt
-    if (data.requireAck && typeof data.callback === 'function') {
+    if (data.requireAck && typeof data.callback === "function") {
       data.callback({ received: true, timestamp: new Date().toISOString() });
-      console.log(`✅ BACKEND SOCKET: Message acknowledgment sent to client ${socket.id}`);
+      console.log(
+        `✅ BACKEND SOCKET: Message acknowledgment sent to client ${socket.id}`
+      );
     }
   });
-  
+
   // Debug command handler
-  socket.on('debug', (command: string, params: any, callback: Function) => {
-    console.log(`🔧 BACKEND SOCKET: Debug command from ${socket.id}: ${command}`, params);
-    
-    if (command === 'stats') {
+  socket.on("debug", (command: string, params: any, callback: Function) => {
+    console.log(
+      `🔧 BACKEND SOCKET: Debug command from ${socket.id}: ${command}`,
+      params
+    );
+
+    if (command === "stats") {
       callback(serverStats);
       console.log(`✅ BACKEND SOCKET: Stats sent to client ${socket.id}`);
-    } else if (command === 'ping') {
+    } else if (command === "ping") {
       callback({ pong: true, serverTime: new Date().toISOString() });
       console.log(`✅ BACKEND SOCKET: Pong sent to client ${socket.id}`);
-    } else if (command === 'forceUpdate') {
+    } else if (command === "forceUpdate") {
       emitRealTimeData();
       callback({ updating: true });
-      console.log(`✅ BACKEND SOCKET: Force update triggered by client ${socket.id}`);
+      console.log(
+        `✅ BACKEND SOCKET: Force update triggered by client ${socket.id}`
+      );
     } else {
-      callback({ error: 'Unknown command' });
-      console.log(`❌ BACKEND SOCKET: Unknown command from client ${socket.id}: ${command}`);
+      callback({ error: "Unknown command" });
+      console.log(
+        `❌ BACKEND SOCKET: Unknown command from client ${socket.id}: ${command}`
+      );
     }
   });
-  
-  socket.on('disconnect', (reason: string) => {
+
+  socket.on("disconnect", (reason: string) => {
     serverStats.connections--;
-    console.log(`👋 BACKEND SOCKET: Client disconnected: ${socket.id}, reason: ${reason}`);
-    console.log(`🔌 BACKEND SOCKET: Remaining active connections: ${serverStats.connections}`);
+    console.log(
+      `👋 BACKEND SOCKET: Client disconnected: ${socket.id}, reason: ${reason}`
+    );
+    console.log(
+      `🔌 BACKEND SOCKET: Remaining active connections: ${serverStats.connections}`
+    );
   });
 });
 
@@ -319,17 +346,19 @@ function scheduleNextUpdate() {
         updateInterval = 30000;
         scheduleNextUpdate();
       })
-      .catch(error => {
-        console.error('Failed to emit updates:', error);
+      .catch((error) => {
+        console.error("Failed to emit updates:", error);
         serverStats.errors++;
-        
+
         // Exponential backoff
         consecutiveFailures++;
         if (consecutiveFailures > 5) {
           updateInterval = Math.min(updateInterval * 2, maxInterval);
-          console.log(`Backing off update interval to ${updateInterval}ms due to errors`);
+          console.log(
+            `Backing off update interval to ${updateInterval}ms due to errors`
+          );
         }
-        
+
         scheduleNextUpdate();
       });
   }, updateInterval);
@@ -339,44 +368,47 @@ function scheduleNextUpdate() {
 scheduleNextUpdate();
 
 // Middleware
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173'
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "*",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/accounts', accountRoutes);
-app.use('/api/plans', planRoutes);
-app.use('/api/wallets', walletRoutes);
-app.use('/api/referrals', referralRoutes);
-app.use('/api/pnl', pnlRoutes);
-app.use('/api/staff', staffRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/accounts", accountRoutes);
+app.use("/api/plans", planRoutes);
+app.use("/api/wallets", walletRoutes);
+app.use("/api/referrals", referralRoutes);
+app.use("/api/pnl", pnlRoutes);
+app.use("/api/staff", staffRoutes);
 
 // Chat endpoints
-app.get('/api/chat/customer/:customerId', async (req, res) => {
+app.get("/api/chat/customer/:customerId", async (req, res) => {
   try {
     const { customerId } = req.params;
-    
-    if (customerId === 'all') {
+
+    if (customerId === "all") {
       // Admin access - get all chats
       const chats = await prisma.chat.findMany({
         include: {
           messages: {
             orderBy: {
-              createdAt: 'desc',
+              createdAt: "desc",
             },
             take: 50,
           },
           customer: true,
         },
         orderBy: {
-          updatedAt: 'desc',
+          updatedAt: "desc",
         },
       });
       return res.json(chats);
@@ -388,7 +420,7 @@ app.get('/api/chat/customer/:customerId', async (req, res) => {
       include: {
         messages: {
           orderBy: {
-            createdAt: 'desc',
+            createdAt: "desc",
           },
           take: 50,
         },
@@ -397,23 +429,23 @@ app.get('/api/chat/customer/:customerId', async (req, res) => {
     });
     res.json(chat);
   } catch (error) {
-    console.error('Error fetching customer chat:', error);
+    console.error("Error fetching customer chat:", error);
     serverStats.errors++;
-    res.status(500).json({ error: 'Failed to fetch chat' });
+    res.status(500).json({ error: "Failed to fetch chat" });
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   try {
     const { customerId } = req.body;
-    
+
     // First verify the customer exists
     const customerExists = await prisma.user.findUnique({
-      where: { id: customerId }
+      where: { id: customerId },
     });
 
     if (!customerExists) {
-      return res.status(404).json({ error: 'Customer not found' });
+      return res.status(404).json({ error: "Customer not found" });
     }
 
     // Then create the chat
@@ -422,29 +454,29 @@ app.post('/api/chat', async (req, res) => {
         customerId: customerId,
         lastMessage: null,
         unreadCount: 0,
-      }
+      },
     });
 
     res.json(chat);
   } catch (error) {
-    console.error('Error creating chat:', error);
+    console.error("Error creating chat:", error);
     serverStats.errors++;
-    res.status(500).json({ error: 'Failed to create chat' });
+    res.status(500).json({ error: "Failed to create chat" });
   }
 });
 
-app.post('/api/chat/message', async (req, res) => {
+app.post("/api/chat/message", async (req, res) => {
   try {
     const { chatId, senderId, content } = req.body;
-    
+
     if (!chatId || !senderId || !content) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     // If senderId is 'admin', use the actual admin user ID
-    const actualSenderId = senderId === 'admin' ? adminUser?.id : senderId;
+    const actualSenderId = senderId === "admin" ? adminUser?.id : senderId;
     if (!actualSenderId) {
-      return res.status(400).json({ error: 'Invalid sender ID' });
+      return res.status(400).json({ error: "Invalid sender ID" });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -454,11 +486,11 @@ app.post('/api/chat/message', async (req, res) => {
           chatId,
           senderId: actualSenderId,
           content,
-          read: false
+          read: false,
         },
         include: {
-          sender: true
-        }
+          sender: true,
+        },
       });
 
       // Update the chat
@@ -468,72 +500,72 @@ app.post('/api/chat/message', async (req, res) => {
           lastMessage: content,
           unreadCount: {
             increment: 1,
-          }
+          },
         },
         include: {
           messages: {
             orderBy: {
-              createdAt: 'desc'
+              createdAt: "desc",
             },
             take: 50,
             include: {
-              sender: true
-            }
-          }
-        }
+              sender: true,
+            },
+          },
+        },
       });
 
       return updatedChat;
     });
 
     // Notify connected clients about new message
-    io.emit('newChatMessage', {
+    io.emit("newChatMessage", {
       chatId,
       message: {
         content,
-        sender: senderId === 'admin' ? 'Admin' : senderId,
-        timestamp: new Date().toISOString()
-      }
+        sender: senderId === "admin" ? "Admin" : senderId,
+        timestamp: new Date().toISOString(),
+      },
     });
     serverStats.messagesSent++;
 
     res.json(result);
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error("Error sending message:", error);
     serverStats.errors++;
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 
-app.post('/api/chat/:chatId/read', async (req, res) => {
+app.post("/api/chat/:chatId/read", async (req, res) => {
   try {
     const { chatId } = req.params;
-    
+
     const result = await prisma.$transaction(async (tx) => {
       // First, update all messages in this chat to read
       await tx.message.updateMany({
         where: {
-          chatId: chatId
+          chatId: chatId,
         },
         data: {
-          read: true
-        }
+          read: true,
+        },
       });
 
       // Then, reset the unread count on the chat
       const updatedChat = await tx.chat.update({
         where: { id: chatId },
         data: {
-          unreadCount: 0
+          unreadCount: 0,
         },
         include: {
           messages: {
             orderBy: {
-              createdAt: 'desc'
+              createdAt: "desc",
             },
-            take: 50
-          }
-        }
+            take: 50,
+          },
+        },
       });
 
       return updatedChat;
@@ -541,86 +573,87 @@ app.post('/api/chat/:chatId/read', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error marking chat as read:', error);
+    console.error("Error marking chat as read:", error);
     serverStats.errors++;
-    res.status(500).json({ error: 'Failed to mark chat as read' });
+    res.status(500).json({ error: "Failed to mark chat as read" });
   }
 });
 
-app.delete('/api/chat/:chatId', async (req, res) => {
+app.delete("/api/chat/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
-    
+
     await prisma.$transaction(async (tx) => {
       // First delete all messages in the chat
       await tx.message.deleteMany({
-        where: { chatId }
+        where: { chatId },
       });
 
       // Then delete the chat itself
       await tx.chat.delete({
-        where: { id: chatId }
+        where: { id: chatId },
       });
     });
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting chat:', error);
+    console.error("Error deleting chat:", error);
     serverStats.errors++;
-    res.status(500).json({ error: 'Failed to delete chat' });
+    res.status(500).json({ error: "Failed to delete chat" });
   }
 });
 
 // Modify routes to emit socket events on relevant changes
 // For example, when a new transaction is created or wallet balance updated
-app.use('/api/wallets', (req, res, next) => {
+app.use("/api/wallets", (req, res, next) => {
   const originalSend = res.send;
-  
-  res.send = function(body) {
+
+  res.send = function (body) {
     // Check if this is a POST or PUT request for a transaction
-    if ((req.method === 'POST' || req.method === 'PUT') && 
-        (req.url.includes('/transaction') || req.url.includes('/balance'))) {
-      
+    if (
+      (req.method === "POST" || req.method === "PUT") &&
+      (req.url.includes("/transaction") || req.url.includes("/balance"))
+    ) {
       // Emit updates after successful operation
       emitRealTimeData();
-      
+
       // If this is a new transaction, emit that specific transaction
-      if (req.method === 'POST' && req.url.includes('/transaction') && body) {
+      if (req.method === "POST" && req.url.includes("/transaction") && body) {
         try {
           const parsedBody = JSON.parse(body);
-          io.emit('newTransaction', parsedBody);
+          io.emit("newTransaction", parsedBody);
           serverStats.messagesSent++;
         } catch (e) {
-          console.error('Error parsing transaction response:', e);
+          console.error("Error parsing transaction response:", e);
           serverStats.errors++;
         }
       }
     }
-    
+
     return originalSend.call(this, body);
   };
-  
+
   next();
 });
 
 // Apply similar middleware to PnL route to emit updates when new PnL data is added
-app.use('/api/pnl', (req, res, next) => {
+app.use("/api/pnl", (req, res, next) => {
   const originalSend = res.send;
-  
-  res.send = function(body) {
+
+  res.send = function (body) {
     // If this is a POST or PUT request, emit updates
-    if (req.method === 'POST' || req.method === 'PUT') {
+    if (req.method === "POST" || req.method === "PUT") {
       emitRealTimeData();
     }
-    
+
     return originalSend.call(this, body);
   };
-  
+
   next();
 });
 
 // Special admin panel for server monitoring
-app.get('/admin/server-status', (req, res) => {
+app.get("/admin/server-status", (req, res) => {
   const html = `
   <!DOCTYPE html>
   <html>
@@ -678,7 +711,9 @@ app.get('/admin/server-status', (req, res) => {
           </div>
           <div class="stat-box">
             <div class="stat-label">Memory Usage</div>
-            <div class="stat-value">${serverStats.memoryUsage.toFixed(2)} MB</div>
+            <div class="stat-value">${serverStats.memoryUsage.toFixed(
+              2
+            )} MB</div>
           </div>
         </div>
         
@@ -743,7 +778,7 @@ app.get('/admin/server-status', (req, res) => {
   </body>
   </html>
   `;
-  
+
   res.send(html);
 });
 
@@ -751,43 +786,43 @@ app.get('/admin/server-status', (req, res) => {
 app.use(errorHandler);
 
 // Process error handling for uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('❌ CRITICAL: Uncaught Exception:', error);
+process.on("uncaughtException", (error) => {
+  console.error("❌ CRITICAL: Uncaught Exception:", error);
   serverStats.errors++;
-  
+
   // Log to file for forensics
   fs.appendFileSync(
-    path.join(__dirname, '../error.log'), 
+    path.join(__dirname, "../error.log"),
     `${new Date().toISOString()} - Uncaught Exception: ${error.stack}\n`
   );
-  
+
   // Try to notify connected clients
   try {
-    io.emit('serverMessage', {
-      type: 'critical',
-      message: 'The server encountered a critical error',
-      timestamp: new Date().toISOString()
+    io.emit("serverMessage", {
+      type: "critical",
+      message: "The server encountered a critical error",
+      timestamp: new Date().toISOString(),
     });
   } catch (emitError) {
-    console.error('Failed to notify clients about critical error:', emitError);
+    console.error("Failed to notify clients about critical error:", emitError);
   }
-  
+
   // Don't crash the process in production, but log that we should restart
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('Server would normally restart in production environment');
+  if (process.env.NODE_ENV !== "production") {
+    console.log("Server would normally restart in production environment");
   }
 });
 
 // Start server (use 'server' instead of 'app')
 server.listen(port, () => {
   const serverUrl = `http://localhost:${port}`;
-  
+
   console.log(`
   🚀 Enhanced Divine Algo Server running!
   
   ===== SERVER DETAILS =====
   ⏰ Server started at: ${new Date().toLocaleString()}
-  🌐 Environment: ${process.env.NODE_ENV || 'development'}
+  🌐 Environment: ${process.env.NODE_ENV || "development"}
   📍 Hostname: ${os.hostname()}
   💻 Platform: ${process.platform} (${os.type()} ${os.release()})
   🧠 Node.js: ${process.version}
@@ -807,23 +842,27 @@ server.listen(port, () => {
   ⏱️ Connection timeout: 45000ms
   
   ===== CORS CONFIGURATION =====
-  🌍 Origins: ${Array.isArray(io.engine.opts.cors) 
-    ? JSON.stringify(io.engine.opts.cors) 
-    : typeof io.engine.opts.cors === 'object' && io.engine.opts.cors 
-      ? JSON.stringify(io.engine.opts.cors.origin || 'all')
-      : 'all'}
-  📝 Methods: ${Array.isArray(io.engine.opts.cors) 
-    ? 'GET, POST' 
-    : typeof io.engine.opts.cors === 'object' && io.engine.opts.cors 
-      ? JSON.stringify(io.engine.opts.cors.methods || ['GET', 'POST'])
-      : 'GET, POST'}
+  🌍 Origins: ${
+    Array.isArray(io.engine.opts.cors)
+      ? JSON.stringify(io.engine.opts.cors)
+      : typeof io.engine.opts.cors === "object" && io.engine.opts.cors
+      ? JSON.stringify(io.engine.opts.cors.origin || "all")
+      : "all"
+  }
+  📝 Methods: ${
+    Array.isArray(io.engine.opts.cors)
+      ? "GET, POST"
+      : typeof io.engine.opts.cors === "object" && io.engine.opts.cors
+      ? JSON.stringify(io.engine.opts.cors.methods || ["GET", "POST"])
+      : "GET, POST"
+  }
   
   💡 To test the socket connection: Visit ${serverUrl}/admin/server-status
   `);
-  
+
   // First scheduled update to ensure data is available
   setTimeout(() => {
-    console.log('📊 BACKEND SOCKET: Running initial scheduled data update...');
+    console.log("📊 BACKEND SOCKET: Running initial scheduled data update...");
     emitRealTimeData();
   }, 2000);
-}); 
+});
