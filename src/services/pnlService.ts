@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma, Transaction } from '@prisma/client';
 import { PnL } from '../types';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -205,7 +206,14 @@ export const pnlService = {
   },
   async createPnlTransaction(data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
     const transaction = await prisma.transaction.create({
-      data,
+      data: {
+        id: crypto.randomUUID(),
+        walletId: data.walletId,
+        type: data.type,
+        amount: data.amount,
+        status: data.status,
+        description: data.description || null
+      },
     });
 
     const wallet = await prisma.wallet.findUnique({

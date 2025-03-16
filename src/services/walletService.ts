@@ -90,7 +90,7 @@ export const walletService = {
     amount: number;
     description: string;
   }) {
-    console.log('createTransaction', data);
+
     const { walletId, type, amount, description } = data;
 
     // Start a transaction
@@ -98,6 +98,7 @@ export const walletService = {
       // Create the transaction record
       const transaction = await tx.transaction.create({
         data: {
+          id: `T${Math.floor(1000 + Math.random() * 9000)}`,
           walletId,
           type,
           amount,
