@@ -118,6 +118,7 @@ async function main() {
       // Create some transactions
       await prisma.transaction.create({
         data: {
+          id: 'T1001',
           walletId: wallet.id,
           type: 'DEPOSIT',
           amount: 1000 * (i + 1),
