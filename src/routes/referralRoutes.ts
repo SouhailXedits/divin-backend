@@ -35,12 +35,8 @@ router.get('/agent/:agentId/earnings', async (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-  console.log('req.body', req.body);
   try {
     const { agentId, customerId, isManualAssignment } = req.body;
-    console.log('agentId', agentId);
-    console.log('customerId', customerId);
-    console.log('isManualAssignment', isManualAssignment);
     const referral = await referralService.create({
       agentUniqueId: agentId,
       customerUniqueId: customerId,

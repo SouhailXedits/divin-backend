@@ -9,7 +9,6 @@ const router = Router();
 // Helper function to validate and normalize role
 const validateAndNormalizeRole = (role: string): StaffRole => {
   const normalizedRole = role.toUpperCase();
-  console.log(normalizedRole);
   if (!Object.values(StaffRole).includes(normalizedRole as StaffRole)) {
     throw new AppError('Invalid staff role', 400);
   }

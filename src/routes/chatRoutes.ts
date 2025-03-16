@@ -115,7 +115,6 @@ router.post('/message', async (req, res) => {
       where: { id: senderId },
       select: { username: true, email: true, role: true },
     });
-    console.log("💬 Sender:", sender);
     const isAdminSender = sender?.role === "ADMIN" ? true : false;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -126,7 +125,6 @@ router.post('/message', async (req, res) => {
           customer: true,
         },
       });
-      console.log("💬 Chat:", chat);
 
       if (!chat) {
         throw new Error("Chat not found");
@@ -193,7 +191,6 @@ router.post('/message', async (req, res) => {
       });
       
       const senderName = sender?.username || "User";
-      console.log("💬 Actual Sender ID:", isAdminSender);
       
       
       if (isAdminSender) {
@@ -203,18 +200,10 @@ router.post('/message', async (req, res) => {
           select: { email: true, username: true, id: true },
         });
         
-        console.log("👤 Customer User Details:", {
-          id: customer?.id || "Not found",
-          username: customer?.username || "Not found",
-          email: customer?.email || "Not found"
-        });
-        
         if (customer?.email) {
           // Generate a URL for the customer to view the chat
           const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/chat?id=${chatId}`;
-          
-          console.log("📧 Sending email notification to customer:", customer.email);
-          
+                    
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(
             result.chat.customer.email,
@@ -234,18 +223,11 @@ router.post('/message', async (req, res) => {
           select: { email: true, username: true, id: true },
         });
         
-        console.log("👨‍💼 Admin User Details:", {
-          id: adminUserInfo?.id || "Not found",
-          username: adminUserInfo?.username || "Not found",
-          email: adminUserInfo?.email || "Not found"
-        });
         
         if (adminUserInfo?.email) {
           // Generate a URL for the admin to view the chat
           const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/chat?id=${chatId}`;
-          
-          console.log("📧 Sending email notification to admin:", adminUserInfo.email);
-          
+                    
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(
             adminUserInfo.email,
@@ -254,7 +236,6 @@ router.post('/message', async (req, res) => {
             chatUrl
           );
           
-          console.log(`📧 Email to admin ${emailSent ? 'sent successfully' : 'failed to send'}`);
         } else {
           console.log("⚠️ Cannot send email: Admin email not found");
         }

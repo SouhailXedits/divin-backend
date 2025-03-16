@@ -156,8 +156,6 @@ async function initializeAdminUser() {
 // Enhanced function to calculate and emit real-time data updates with error handling
 async function emitRealTimeData() {
   try {
-    console.log("📊 BACKEND SOCKET: Starting calculation of real-time data...");
-
     // Calculate total divine algo share
     const pnlData = await prisma.pnL.findMany({
       where: {
@@ -169,10 +167,6 @@ async function emitRealTimeData() {
         divineAlgoShare: true,
       },
     });
-
-    console.log(
-      `📊 BACKEND SOCKET: Retrieved ${pnlData.length} PnL records from database`
-    );
 
     const totalDivineAlgoShare = pnlData.reduce((total, entry) => {
       return total + (entry.divineAlgoShare || 0);
@@ -284,8 +278,6 @@ io.on("connection", (socket: any) => {
 
   // Handle client messages and debugging requests
   socket.on("clientMessage", (data: any) => {
-    console.log(`📨 BACKEND SOCKET: Message from ${socket.id}:`, data);
-
     // Acknowledge receipt
     if (data.requireAck && typeof data.callback === "function") {
       data.callback({ received: true, timestamp: new Date().toISOString() });
@@ -311,9 +303,6 @@ io.on("connection", (socket: any) => {
     } else if (command === "forceUpdate") {
       emitRealTimeData();
       callback({ updating: true });
-      console.log(
-        `✅ BACKEND SOCKET: Force update triggered by client ${socket.id}`
-      );
     } else {
       callback({ error: "Unknown command" });
       console.log(
