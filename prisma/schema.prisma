@@ -109,7 +109,7 @@ model Wallet {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
+  id          String   @id @unique
   walletId    String
   type        String
   amount      Float

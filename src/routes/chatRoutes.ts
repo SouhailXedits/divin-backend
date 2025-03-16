@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { Server } from 'socket.io';
+import { emailService } from '../services/emailService';
 
 // Initialize router
 const router = Router();
@@ -117,6 +118,18 @@ router.post('/message', async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      // Get the chat to determine the recipient
+      const chat = await tx.chat.findUnique({
+        where: { id: chatId },
+        include: {
+          customer: true,
+        },
+      });
+
+      if (!chat) {
+        throw new Error("Chat not found");
+      }
+
       // Create the message
       const message = await tx.message.create({
         data: {
@@ -152,7 +165,7 @@ router.post('/message', async (req, res) => {
         },
       });
 
-      return updatedChat;
+      return { chat, message, updatedChat };
     });
 
     // Notify connected clients about new message
@@ -166,7 +179,64 @@ router.post('/message', async (req, res) => {
     });
     serverStats.messagesSent++;
 
-    res.json(result);
+    // Get receiver information for email notification
+    try {
+      // Determine recipient (if admin is sender, recipient is customer, otherwise recipient is admin)
+      const isAdminSender = senderId === "admin" || senderId === adminUser?.id;
+      
+      // Get sender name for the email notification
+      const sender = await prisma.user.findUnique({
+        where: { id: actualSenderId },
+        select: { username: true },
+      });
+      
+      const senderName = sender?.username || "User";
+      
+      if (isAdminSender) {
+        // Admin sending to customer - notify customer
+        const customer = await prisma.user.findUnique({
+          where: { id: result.chat.customerId },
+          select: { email: true, username: true },
+        });
+        
+        if (customer?.email) {
+          // Generate a URL for the customer to view the chat
+          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/chat?id=${chatId}`;
+          
+          // Send email notification
+          await emailService.sendMessageNotification(
+            customer.email,
+            "Admin", // Admin name can be customized
+            content,
+            chatUrl
+          );
+        }
+      } else {
+        // Customer sending to admin - notify admin if admin has email
+        const adminUser = await prisma.user.findFirst({
+          where: { role: "ADMIN" },
+          select: { email: true, username: true },
+        });
+        
+        if (adminUser?.email) {
+          // Generate a URL for the admin to view the chat
+          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/chat?id=${chatId}`;
+          
+          // Send email notification
+          await emailService.sendMessageNotification(
+            adminUser.email,
+            senderName,
+            content,
+            chatUrl
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error("Error sending email notification:", emailError);
+      // Don't fail the request if email sending fails
+    }
+
+    res.json(result.updatedChat);
   } catch (error) {
     console.error("Error sending message:", error);
     serverStats.errors++;
