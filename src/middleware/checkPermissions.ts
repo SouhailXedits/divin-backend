@@ -10,6 +10,7 @@ declare module 'express-serve-static-core' {
       token?: string;
       [key: string]: any;
     };
+    staffPermissions?: any;
   }
 }
 
@@ -108,8 +109,9 @@ const getTokenFromRequest = (req: Request): string | null => {
   }
   
   // Check for token in session (if session exists)
-  if (req.session && req.session.token) {
-    return req.session.token;
+  // eslint-disable-next-line
+  if ((req as any).session && (req as any).session.token) {
+    return (req as any).session.token;
   }
   
   return null;
