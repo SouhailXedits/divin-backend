@@ -111,11 +111,12 @@ router.post('/message', async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // If senderId is 'admin', use the actual admin user ID
-    const actualSenderId = senderId === "admin" ? adminUser?.id : senderId;
-    if (!actualSenderId) {
-      return res.status(400).json({ error: "Invalid sender ID" });
-    }
+    const sender = await prisma.user.findUnique({
+      where: { id: senderId },
+      select: { username: true, email: true, role: true },
+    });
+    console.log("💬 Sender:", sender);
+    const isAdminSender = sender?.role === "ADMIN" ? true : false;
 
     const result = await prisma.$transaction(async (tx) => {
       // Get the chat to determine the recipient
@@ -125,6 +126,7 @@ router.post('/message', async (req, res) => {
           customer: true,
         },
       });
+      console.log("💬 Chat:", chat);
 
       if (!chat) {
         throw new Error("Chat not found");
@@ -134,7 +136,7 @@ router.post('/message', async (req, res) => {
       const message = await tx.message.create({
         data: {
           chatId,
-          senderId: actualSenderId,
+          senderId,
           content,
           read: false,
         },
@@ -182,53 +184,79 @@ router.post('/message', async (req, res) => {
     // Get receiver information for email notification
     try {
       // Determine recipient (if admin is sender, recipient is customer, otherwise recipient is admin)
-      const isAdminSender = senderId === "admin" || senderId === adminUser?.id;
+      
       
       // Get sender name for the email notification
       const sender = await prisma.user.findUnique({
-        where: { id: actualSenderId },
+        where: { id: senderId },
         select: { username: true },
       });
       
       const senderName = sender?.username || "User";
+      console.log("💬 Actual Sender ID:", isAdminSender);
+      
       
       if (isAdminSender) {
         // Admin sending to customer - notify customer
         const customer = await prisma.user.findUnique({
           where: { id: result.chat.customerId },
-          select: { email: true, username: true },
+          select: { email: true, username: true, id: true },
+        });
+        
+        console.log("👤 Customer User Details:", {
+          id: customer?.id || "Not found",
+          username: customer?.username || "Not found",
+          email: customer?.email || "Not found"
         });
         
         if (customer?.email) {
           // Generate a URL for the customer to view the chat
           const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/chat?id=${chatId}`;
           
+          console.log("📧 Sending email notification to customer:", customer.email);
+          
           // Send email notification
-          await emailService.sendMessageNotification(
-            customer.email,
+          const emailSent = await emailService.sendMessageNotification(
+            result.chat.customer.email,
             "Admin", // Admin name can be customized
             content,
             chatUrl
           );
+          
+          console.log(`📧 Email to customer ${emailSent ? 'sent successfully' : 'failed to send'}`);
+        } else {
+          console.log("⚠️ Cannot send email: Customer email not found");
         }
       } else {
         // Customer sending to admin - notify admin if admin has email
-        const adminUser = await prisma.user.findFirst({
+        const adminUserInfo = await prisma.user.findFirst({
           where: { role: "ADMIN" },
-          select: { email: true, username: true },
+          select: { email: true, username: true, id: true },
         });
         
-        if (adminUser?.email) {
+        console.log("👨‍💼 Admin User Details:", {
+          id: adminUserInfo?.id || "Not found",
+          username: adminUserInfo?.username || "Not found",
+          email: adminUserInfo?.email || "Not found"
+        });
+        
+        if (adminUserInfo?.email) {
           // Generate a URL for the admin to view the chat
           const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/chat?id=${chatId}`;
           
+          console.log("📧 Sending email notification to admin:", adminUserInfo.email);
+          
           // Send email notification
-          await emailService.sendMessageNotification(
-            adminUser.email,
+          const emailSent = await emailService.sendMessageNotification(
+            adminUserInfo.email,
             senderName,
             content,
             chatUrl
           );
+          
+          console.log(`📧 Email to admin ${emailSent ? 'sent successfully' : 'failed to send'}`);
+        } else {
+          console.log("⚠️ Cannot send email: Admin email not found");
         }
       }
     } catch (emailError) {
