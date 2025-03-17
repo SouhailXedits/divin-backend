@@ -51,7 +51,7 @@ export const referralService = {
 
     // Find agent by uniqueId
     const agent = await prisma.user.findUnique({
-      where: { id: agentUniqueId },
+      where: { uniqueId: agentUniqueId },
     });
 
     if (!agent) {

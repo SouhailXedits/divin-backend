@@ -33,7 +33,8 @@ export enum AccountStatus {
 
 export enum TransactionType {
   DEPOSIT = 'DEPOSIT',
-  WITHDRAWAL = 'WITHDRAWAL'
+  WITHDRAWAL = 'WITHDRAWAL',
+  PROFIT_SHARE = 'PROFIT_SHARE'
 }
 
 export interface User {
@@ -69,11 +70,11 @@ export interface Plan {
   profitSharingCustomer: number;
   profitSharingPlatform: number;
   upfrontFee: number;
+  confirmationText?: string;
   createdAt: Date;
   updatedAt: Date;
   visability: 'PUBLIC' | 'PRIVATE';
 }
-
 
 export interface Wallet {
   id: string;

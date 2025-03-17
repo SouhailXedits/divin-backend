@@ -52,6 +52,7 @@ model Plan {
   profitSharingPlatform Int
   upfrontFee            Float
   visability            String   @default("PUBLIC")
+  confirmationText      String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

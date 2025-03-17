@@ -202,7 +202,7 @@ router.post('/message', async (req, res) => {
         
         if (customer?.email) {
           // Generate a URL for the customer to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/chat?id=${chatId}`;
+          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
                     
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(
@@ -211,11 +211,7 @@ router.post('/message', async (req, res) => {
             content,
             chatUrl
           );
-          
-          console.log(`📧 Email to customer ${emailSent ? 'sent successfully' : 'failed to send'}`);
-        } else {
-          console.log("⚠️ Cannot send email: Customer email not found");
-        }
+        } 
       } else {
         // Customer sending to admin - notify admin if admin has email
         const adminUserInfo = await prisma.user.findFirst({
@@ -226,7 +222,7 @@ router.post('/message', async (req, res) => {
         
         if (adminUserInfo?.email) {
           // Generate a URL for the admin to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/chat?id=${chatId}`;
+          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
                     
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(

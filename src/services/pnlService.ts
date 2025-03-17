@@ -114,10 +114,10 @@ export const pnlService = {
               if (referral.agent?.wallet?.id) {
                 await this.createPnlTransaction({
                   walletId: referral.agent.wallet.id,
-                  type: 'DEPOSIT',
+                  type: 'PROFIT_SHARE',
                   amount: agentEarnings,
                   status: 'SUCCESS',
-                  description: `PnL for referral of ${user.username}`,
+                  description: `Divine Algo Share`,
                 });
               }
             })
@@ -127,10 +127,10 @@ export const pnlService = {
         }
         await this.createPnlTransaction({
           walletId: user.wallet?.id || '',
-          type: 'WITHDRAWAL',
+          type: 'PROFIT_SHARE',
           amount: platformPnl,
           status: 'SUCCESS',
-          description: `PnL for ${user.username}`,
+          description: `Divine Algo Share`,
         });
 
         // await Promise.all(
