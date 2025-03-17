@@ -69,11 +69,11 @@ export interface Plan {
   profitSharingCustomer: number;
   profitSharingPlatform: number;
   upfrontFee: number;
+  confirmationText?: string;
   createdAt: Date;
   updatedAt: Date;
   visability: 'PUBLIC' | 'PRIVATE';
 }
-
 
 export interface Wallet {
   id: string;
