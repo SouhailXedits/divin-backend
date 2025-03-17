@@ -33,7 +33,8 @@ export enum AccountStatus {
 
 export enum TransactionType {
   DEPOSIT = 'DEPOSIT',
-  WITHDRAWAL = 'WITHDRAWAL'
+  WITHDRAWAL = 'WITHDRAWAL',
+  PROFIT_SHARE = 'PROFIT_SHARE'
 }
 
 export interface User {
