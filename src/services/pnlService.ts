@@ -132,7 +132,6 @@ export const pnlService = {
           status: 'SUCCESS',
           description: `PnL for ${user.username}`,
         });
-        console.log('reffered by', user.referralsAsCustomer);
 
         // await Promise.all(
         //   user.referralsAsCustomer.map(async (referral) => {

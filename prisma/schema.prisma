@@ -72,7 +72,7 @@ model UserPlan {
 
 model PnL {
   id              String   @id @default(uuid())
-  date            DateTime
+  date            DateTime @default(now())
   symbol          String
   totalPnL        Float
   customerShare   Float

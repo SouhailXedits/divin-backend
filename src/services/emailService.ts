@@ -37,17 +37,7 @@ export const emailService = {
    */
   async sendEmail(options: EmailOptions, retryCount = 0): Promise<boolean> {
     try {
-      console.log("📨 Email service configuration:", {
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        secure: process.env.EMAIL_SECURE,
-        username: process.env.EMAIL_USER ? '***Set***' : '***Not Set***',
-        password: process.env.EMAIL_PASSWORD ? '***Set***' : '***Not Set***',
-        senderName: process.env.EMAIL_SENDER_NAME
-      });
       
-      console.log("📨 Sending email to:", options.to);
-
       const senderName = process.env.EMAIL_SENDER_NAME;
       const senderEmail = process.env.EMAIL_USER;
 
@@ -59,19 +49,9 @@ export const emailService = {
         html: options.html,
       });
 
-      console.log(`📨 Email successfully sent to ${options.to}`);
       return true;
     } catch (error: any) {
       const maxRetries = 2;
-
-      // Log detailed error information
-      console.error("Error sending email:", {
-        error: error.message,
-        code: error.code,
-        command: error.command,
-        to: options.to,
-        subject: options.subject,
-      });
 
       // Retry logic for connection issues
       if (
@@ -80,7 +60,6 @@ export const emailService = {
           error.code === "ECONNRESET" ||
           error.code === "ECONNREFUSED")
       ) {
-        console.log(`Retrying email send (${retryCount + 1}/${maxRetries})...`);
         // Wait before retrying (exponential backoff)
         await new Promise((resolve) =>
           setTimeout(resolve, 1000 * Math.pow(2, retryCount))
@@ -160,20 +139,12 @@ export const emailService = {
     try {
       // Test connection to the SMTP server
       await transporter.verify();
-      console.log("Email server connection verified successfully");
       return true;
     } catch (error: any) {
       console.error("Email server connection failed:", {
         error: error.message,
         code: error.code,
         command: error.command,
-      });
-      console.log("Email configuration:", {
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
-        secure: process.env.EMAIL_SECURE,
-        user: process.env.EMAIL_USER ? "***Set***" : "***Not Set***",
-        pass: process.env.EMAIL_PASSWORD ? "***Set***" : "***Not Set***",
       });
       return false;
     }

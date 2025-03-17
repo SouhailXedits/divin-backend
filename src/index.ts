@@ -156,8 +156,6 @@ async function initializeAdminUser() {
 // Enhanced function to calculate and emit real-time data updates with error handling
 async function emitRealTimeData() {
   try {
-    console.log("📊 BACKEND SOCKET: Starting calculation of real-time data...");
-
     // Calculate total divine algo share
     const pnlData = await prisma.pnL.findMany({
       where: {
@@ -169,10 +167,6 @@ async function emitRealTimeData() {
         divineAlgoShare: true,
       },
     });
-
-    console.log(
-      `📊 BACKEND SOCKET: Retrieved ${pnlData.length} PnL records from database`
-    );
 
     const totalDivineAlgoShare = pnlData.reduce((total, entry) => {
       return total + (entry.divineAlgoShare || 0);
@@ -229,7 +223,7 @@ initializeAdminUser()
   })
   .catch(console.error);
 
-// Enhanced Socket.io connection handler with detailed logging and error handling
+// Customer-specific socket handlers
 io.on("connection", (socket: any) => {
   serverStats.connections++;
   serverStats.totalConnections++;
@@ -245,6 +239,66 @@ io.on("connection", (socket: any) => {
   };
   // Send initial real-time data
   emitRealTimeData();
+
+  // Add user authentication for socket connections
+  let authenticatedUserId: string | null = null;
+  
+  // Handle customer authentication
+  socket.on("authenticate", async (data: { userId: string }, callback: Function) => {
+    try {
+      // Verify the user exists
+      const user = await prisma.user.findUnique({
+        where: { id: data.userId },
+      });
+      
+      if (user) {
+        authenticatedUserId = user.id;
+        socket.join(`user:${user.id}`); // Join user-specific room for targeted updates
+        console.log(`✅ BACKEND SOCKET: User ${user.id} authenticated`);
+        
+        // Send initial data for this specific user
+        await emitCustomerDashboardData(user.id, socket);
+        
+        if (callback && typeof callback === "function") {
+          callback({ success: true });
+        }
+      } else {
+        console.log(`❌ BACKEND SOCKET: Failed authentication for user ID ${data.userId}`);
+        if (callback && typeof callback === "function") {
+          callback({ success: false, error: "Authentication failed" });
+        }
+      }
+    } catch (error) {
+      console.error(`❌ BACKEND SOCKET: Authentication error:`, error);
+      if (callback && typeof callback === "function") {
+        callback({ success: false, error: "Server error during authentication" });
+      }
+    }
+  });
+  
+  // Handle customer dashboard data request
+  socket.on("getCustomerDashboardData", async (data: { userId: string }, callback: Function) => {
+    try {
+      if (authenticatedUserId !== data.userId) {
+        // Only allow requesting data for authenticated user
+        if (callback && typeof callback === "function") {
+          callback({ success: false, error: "Unauthorized" });
+        }
+        return;
+      }
+      
+      await emitCustomerDashboardData(data.userId, socket);
+      
+      if (callback && typeof callback === "function") {
+        callback({ success: true });
+      }
+    } catch (error) {
+      console.error(`❌ BACKEND SOCKET: Error fetching customer dashboard data:`, error);
+      if (callback && typeof callback === "function") {
+        callback({ success: false, error: "Failed to fetch dashboard data" });
+      }
+    }
+  });
 
   // Handle ping from client (for measuring latency)
   socket.on("ping", (callback: Function) => {
@@ -284,8 +338,6 @@ io.on("connection", (socket: any) => {
 
   // Handle client messages and debugging requests
   socket.on("clientMessage", (data: any) => {
-    console.log(`📨 BACKEND SOCKET: Message from ${socket.id}:`, data);
-
     // Acknowledge receipt
     if (data.requireAck && typeof data.callback === "function") {
       data.callback({ received: true, timestamp: new Date().toISOString() });
@@ -311,9 +363,6 @@ io.on("connection", (socket: any) => {
     } else if (command === "forceUpdate") {
       emitRealTimeData();
       callback({ updating: true });
-      console.log(
-        `✅ BACKEND SOCKET: Force update triggered by client ${socket.id}`
-      );
     } else {
       callback({ error: "Unknown command" });
       console.log(
@@ -332,6 +381,85 @@ io.on("connection", (socket: any) => {
     );
   });
 });
+
+// Function to emit customer dashboard data
+async function emitCustomerDashboardData(userId: string, socket: any) {
+  try {
+    // Get user details with plan
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userPlan: {
+          include: {
+            plan: true,
+          },
+        },
+      },
+    });
+    
+    if (!user) return;
+    
+    // Get wallet data
+    const wallet = await prisma.wallet.findFirst({
+      where: { 
+        userId: user.uniqueId,
+        archivedAt: null,
+      },
+    });
+    
+    // Get user's approved accounts
+    const accounts = await prisma.account.findMany({
+      where: {
+        userId: userId,
+        status: "APPROVED",
+      },
+    });
+    
+    // Get user's PnL data
+    const userPnLs = await prisma.userPnL.findMany({
+      where: {
+        userId: userId,
+      },
+      include: {
+        pnl: true,
+      },
+      orderBy: {
+        pnl: {
+          date: 'desc',
+        },
+      },
+      take: 30, // Last 30 days
+    });
+    
+    // Calculate totals
+    const totalPnL = userPnLs.reduce((sum, entry) => sum + entry.pnl.totalPnL, 0);
+    const totalCustomerShare = userPnLs.reduce((sum, entry) => sum + entry.pnl.customerShare, 0);
+    const activePlan = user.userPlan?.plan;
+    
+    // Emit data to the specific user's room
+    const dashboardData = {
+      totalPnL,
+      totalCustomerShare,
+      walletBalance: wallet?.balance || 0,
+      activeAccounts: accounts.length,
+      maxAccounts: activePlan?.maxAccounts || 0,
+      activePlan: activePlan ? {
+        name: activePlan.name,
+        profitSharingCustomer: activePlan.profitSharingCustomer,
+      } : null,
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Send to this specific socket or to user's room
+    socket.emit("customerDashboardUpdate", dashboardData);
+    console.log(`✅ BACKEND SOCKET: Emitted dashboard data to user ${userId}`);
+    
+    return dashboardData;
+  } catch (error) {
+    console.error(`❌ BACKEND SOCKET: Error generating customer dashboard data:`, error);
+    throw error;
+  }
+}
 
 // Enhanced periodic update with exponential backoff retry mechanism
 let updateInterval = 30000; // Start with 30 seconds
@@ -399,24 +527,44 @@ app.use("/api/wallets", (req, res, next) => {
   const originalSend = res.send;
 
   res.send = function (body) {
-    // Check if this is a POST or PUT request for a transaction
+    // Check if this is a POST or PUT request for a transaction or balance update
     if (
       (req.method === "POST" || req.method === "PUT") &&
       (req.url.includes("/transaction") || req.url.includes("/balance"))
     ) {
-      // Emit updates after successful operation
-      emitRealTimeData();
-
-      // If this is a new transaction, emit that specific transaction
-      if (req.method === "POST" && req.url.includes("/transaction") && body) {
-        try {
-          const parsedBody = JSON.parse(body);
-          io.emit("newTransaction", parsedBody);
-          serverStats.messagesSent++;
-        } catch (e) {
-          console.error("Error parsing transaction response:", e);
-          serverStats.errors++;
+      try {
+        // Try to extract user ID from the request or body
+        let userId = null;
+        if (req.body && req.body.userId) {
+          userId = req.body.userId;
         }
+        
+        // Emit global updates for admin dashboards
+        emitRealTimeData();
+        
+        // If we know which user was affected, send targeted update
+        if (userId) {
+          // Get socket connected to this user's room
+          const userRoom = `user:${userId}`;
+          const socketsInRoom = io.sockets.adapter.rooms.get(userRoom);
+          
+          if (socketsInRoom && socketsInRoom.size > 0) {
+            // Use the first user socket to emit data (or emit to room)
+            const socketId = Array.from(socketsInRoom)[0];
+            const socket = io.sockets.sockets.get(socketId);
+            
+            if (socket) {
+              emitCustomerDashboardData(userId, socket).catch(console.error);
+            } else {
+              // Fallback to emitting to the whole room
+              emitCustomerDashboardData(userId, { 
+                emit: (event: any, data: any) => io.to(userRoom).emit(event, data) 
+              }).catch(console.error);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error handling wallet update for socket:", e);
       }
     }
 
@@ -434,6 +582,28 @@ app.use("/api/pnl", (req, res, next) => {
     // If this is a POST or PUT request, emit updates
     if (req.method === "POST" || req.method === "PUT") {
       emitRealTimeData();
+      
+      // If PnL update belongs to specific user(s), send targeted updates
+      try {
+        let affectedUserIds: string[] = [];
+        
+        // Try to extract users from the PnL entry
+        if (req.body) {
+          if (req.body.userPnls && Array.isArray(req.body.userPnls)) {
+            affectedUserIds = req.body.userPnls.map((up: any) => up.userId);
+          } else if (req.body.userId) {
+            affectedUserIds.push(req.body.userId);
+          }
+        }
+        
+        // Send targeted updates to each affected user
+        affectedUserIds.forEach(userId => {
+          const userRoom = `user:${userId}`;
+          io.to(userRoom).emit("pnlDataUpdated", { timestamp: new Date().toISOString() });
+        });
+      } catch (e) {
+        console.error("Error handling PnL update for socket:", e);
+      }
     }
 
     return originalSend.call(this, body);

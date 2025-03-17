@@ -51,6 +51,13 @@ export const userService = {
   async findByUniqueId(uniqueId: string) {
     return prisma.user.findUnique({
       where: { uniqueId },
+      include: {
+        userPlan: {
+          include: {
+            plan: true
+          }
+        }
+      }
     });
   },
 
