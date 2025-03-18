@@ -48,6 +48,12 @@ export const userService = {
     });
   },
 
+  async findByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+    });
+  },
+
   async findByUniqueId(uniqueId: string) {
     return prisma.user.findUnique({
       where: { uniqueId },
@@ -85,7 +91,7 @@ export const userService = {
     });
   },
 
-  async updateRole(uniqueId: string, role: UserRole) {
+  async updateRole(uniqueId: string, role: UserRole) {    
     return prisma.user.update({
       where: { uniqueId },
       data: { role },

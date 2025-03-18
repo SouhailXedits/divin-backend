@@ -1,8 +1,14 @@
-import { Router } from 'express';
-import { staffService } from '../services/staffService';
-import { AppError } from '../middleware/errorHandler';
-import { StaffRole, StaffStatus } from '../types';
-import { checkViewPermission, checkEditPermission, checkDeletePermission } from '../middleware/checkPermissions';
+import { Router } from "express";
+import { staffService } from "../services/staffService";
+import { AppError } from "../middleware/errorHandler";
+import { StaffRole, StaffStatus, UserRole } from "../types";
+import {
+  checkViewPermission,
+  checkEditPermission,
+  checkDeletePermission,
+} from "../middleware/checkPermissions";
+import { userService } from "../services/userService";
+import { User } from "@prisma/client";
 
 const router = Router();
 
@@ -10,13 +16,13 @@ const router = Router();
 const validateAndNormalizeRole = (role: string): StaffRole => {
   const normalizedRole = role.toUpperCase();
   if (!Object.values(StaffRole).includes(normalizedRole as StaffRole)) {
-    throw new AppError('Invalid staff role', 400);
+    throw new AppError("Invalid staff role", 400);
   }
   return normalizedRole as StaffRole;
 };
 
 // Get all staff members - requires 'staff' view permission
-router.get('/', checkViewPermission('staff'), async (req, res, next) => {
+router.get("/", checkViewPermission("staff"), async (req, res, next) => {
   try {
     const staff = await staffService.findAll();
     res.json(staff);
@@ -26,7 +32,7 @@ router.get('/', checkViewPermission('staff'), async (req, res, next) => {
 });
 
 // Create a new staff member - requires 'staff' edit permission
-router.post('/', checkEditPermission('staff'), async (req, res, next) => {
+router.post("/", checkEditPermission("staff"), async (req, res, next) => {
   try {
     const { email, name, role } = req.body;
 
@@ -35,7 +41,7 @@ router.post('/', checkEditPermission('staff'), async (req, res, next) => {
 
     const existingStaff = await staffService.findByEmail(email);
     if (existingStaff) {
-      throw new AppError('Staff member with this email already exists', 400);
+      throw new AppError("Staff member with this email already exists", 400);
     }
 
     const staff = await staffService.create({
@@ -43,6 +49,14 @@ router.post('/', checkEditPermission('staff'), async (req, res, next) => {
       name,
       role: normalizedRole,
     });
+    const user = (await userService.findByEmail(email)) as User;
+
+    if (user?.uniqueId) {
+      await userService.updateRole(
+        user.uniqueId,
+        normalizedRole as unknown as UserRole
+      );
+    }
 
     res.status(201).json(staff);
   } catch (error) {
@@ -51,13 +65,13 @@ router.post('/', checkEditPermission('staff'), async (req, res, next) => {
 });
 
 // Get a specific staff member - requires 'staff' view permission
-router.get('/:id', checkViewPermission('staff'), async (req, res, next) => {
+router.get("/:id", checkViewPermission("staff"), async (req, res, next) => {
   try {
     const { id } = req.params;
     const staff = await staffService.findById(id);
 
     if (!staff) {
-      throw new AppError('Staff member not found', 404);
+      throw new AppError("Staff member not found", 404);
     }
 
     res.json(staff);
@@ -67,7 +81,7 @@ router.get('/:id', checkViewPermission('staff'), async (req, res, next) => {
 });
 
 // Update a staff member - requires 'staff' edit permission
-router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
+router.patch("/:id", checkEditPermission("staff"), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { email, name, role, permissions, status } = req.body;
@@ -76,7 +90,7 @@ router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
     if (email) {
       const existingStaff = await staffService.findByEmail(email);
       if (existingStaff && existingStaff.id !== id) {
-        throw new AppError('Email already in use', 400);
+        throw new AppError("Email already in use", 400);
       }
     }
 
@@ -88,7 +102,7 @@ router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
     if (status) {
       const upperStatus = status.toUpperCase();
       if (!Object.values(StaffStatus).includes(upperStatus as StaffStatus)) {
-        throw new AppError('Invalid staff status', 400);
+        throw new AppError("Invalid staff status", 400);
       }
       normalizedStatus = upperStatus;
     }
@@ -96,11 +110,11 @@ router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
     // If updating permissions, validate them
     if (permissions) {
       try {
-        if (typeof permissions === 'string') {
+        if (typeof permissions === "string") {
           JSON.parse(permissions);
         }
       } catch (e) {
-        throw new AppError('Invalid permissions format', 400);
+        throw new AppError("Invalid permissions format", 400);
       }
     }
 
@@ -112,6 +126,15 @@ router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
       ...(permissions && { permissions }),
     });
 
+    const user = (await userService.findByEmail(staff.email)) as User;
+
+    if (normalizedRole && user.uniqueId) {
+      await userService.updateRole(
+        user.uniqueId,
+        normalizedRole as unknown as UserRole
+      );
+    }
+
     res.json(staff);
   } catch (error) {
     next(error);
@@ -119,47 +142,62 @@ router.patch('/:id', checkEditPermission('staff'), async (req, res, next) => {
 });
 
 // Update a staff member's status - requires 'staff' edit permission
-router.patch('/:id/status', checkEditPermission('staff'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+router.patch(
+  "/:id/status",
+  checkEditPermission("staff"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
 
-    const upperStatus = status.toUpperCase();
-    if (!Object.values(StaffStatus).includes(upperStatus as StaffStatus)) {
-      throw new AppError('Invalid staff status', 400);
+      const upperStatus = status.toUpperCase();
+      if (!Object.values(StaffStatus).includes(upperStatus as StaffStatus)) {
+        throw new AppError("Invalid staff status", 400);
+      }
+
+      const staff = await staffService.updateStatus(
+        id,
+        upperStatus as StaffStatus
+      );
+      res.json(staff);
+    } catch (error) {
+      next(error);
     }
-
-    const staff = await staffService.updateStatus(id, upperStatus as StaffStatus);
-    res.json(staff);
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 // Update a staff member's role - requires 'staff' edit permission
-router.patch('/:id/role', checkEditPermission('staff'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
+router.patch(
+  "/:id/role",
+  checkEditPermission("staff"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
 
-    const normalizedRole = validateAndNormalizeRole(role);
+      const normalizedRole = validateAndNormalizeRole(role);
 
-    const staff = await staffService.updateRole(id, normalizedRole);
-    res.json(staff);
-  } catch (error) {
-    next(error);
+      const staff = await staffService.updateRole(id, normalizedRole);
+      res.json(staff);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 // Delete a staff member - requires 'staff' delete permission
-router.delete('/:id', checkDeletePermission('staff'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    await staffService.delete(id);
-    res.json({ message: 'Staff member deleted successfully' });
-  } catch (error) {
-    next(error);
+router.delete(
+  "/:id",
+  checkDeletePermission("staff"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      await staffService.delete(id);
+      res.json({ message: "Staff member deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
-export default router; 
+export default router;

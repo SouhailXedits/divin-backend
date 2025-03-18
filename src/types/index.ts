@@ -1,7 +1,13 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   AGENT = 'AGENT',
-  CUSTOMER = 'CUSTOMER'
+  CUSTOMER = 'CUSTOMER',
+  MANAGER = 'MANAGER',
+  SUPPORT = 'SUPPORT',
+  COO = 'COO',
+  CTO = 'CTO',
+  CMO = 'CMO',
+  CAO = 'CAO'
 }
 
 export enum StaffRole {
