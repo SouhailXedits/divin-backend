@@ -269,5 +269,6 @@ export const staffService = {
     return prisma.staff.delete({
       where: { id },
     });
+    
   },
 }; 

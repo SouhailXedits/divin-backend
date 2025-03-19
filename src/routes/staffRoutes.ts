@@ -192,7 +192,14 @@ router.delete(
   async (req, res, next) => {
     try {
       const { id } = req.params;
+      const staff = await staffService.findById(id);
+      if (!staff) {
+        throw new AppError("Staff member not found", 404);
+      }
+      const user = (await userService.findByEmail(staff.email)) as User;
       await staffService.delete(id);
+      await userService.updateRole(user.uniqueId, "CUSTOMER" as UserRole);
+
       res.json({ message: "Staff member deleted successfully" });
     } catch (error) {
       next(error);
