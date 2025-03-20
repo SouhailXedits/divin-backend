@@ -34,7 +34,7 @@ router.get("/", checkViewPermission("staff"), async (req, res, next) => {
 // Create a new staff member - requires 'staff' edit permission
 router.post("/", checkEditPermission("staff"), async (req, res, next) => {
   try {
-    const { email, name, role } = req.body;
+    const { email, name, role, status } = req.body;
 
     // Validate and normalize role
     const normalizedRole = validateAndNormalizeRole(role);
@@ -48,15 +48,17 @@ router.post("/", checkEditPermission("staff"), async (req, res, next) => {
       email,
       name,
       role: normalizedRole,
+      status: status || "ACTIVE",
     });
     const user = (await userService.findByEmail(email)) as User;
 
-    if (user?.uniqueId) {
+    if (user?.uniqueId && status === "ACTIVE") {
       await userService.updateRole(
         user.uniqueId,
         normalizedRole as unknown as UserRole
       );
     }
+
 
     res.status(201).json(staff);
   } catch (error) {
@@ -128,10 +130,16 @@ router.patch("/:id", checkEditPermission("staff"), async (req, res, next) => {
 
     const user = (await userService.findByEmail(staff.email)) as User;
 
-    if (normalizedRole && user.uniqueId) {
+    if (normalizedRole && user.uniqueId && status === "ACTIVE") {
       await userService.updateRole(
         user.uniqueId,
         normalizedRole as unknown as UserRole
+      );
+    }
+    if (status === "INACTIVE") {
+      await userService.updateRole(
+        user.uniqueId,
+        "CUSTOMER" as unknown as UserRole
       );
     }
 

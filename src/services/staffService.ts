@@ -184,6 +184,7 @@ export const staffService = {
     email: string;
     name: string;
     role: StaffRole;
+    status: StaffStatus;
     portalName?: string;
   }): Promise<StaffWithParsedPermissions> {
     // Generate portal name based on role if not provided
@@ -198,7 +199,7 @@ export const staffService = {
         email: data.email,
         name: data.name,
         role: data.role,
-        status: StaffStatus.ACTIVE,
+        status: data.status,
         permissions: JSON.stringify(permissions),
         portalName,
       },
@@ -269,6 +270,6 @@ export const staffService = {
     return prisma.staff.delete({
       where: { id },
     });
-    
+
   },
 }; 
