@@ -16,6 +16,7 @@ model User {
   phone     String?
   role      String   @default("CUSTOMER")
   status    String   @default("PENDING")
+  isOnline  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

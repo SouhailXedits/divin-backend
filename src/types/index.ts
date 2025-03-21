@@ -52,6 +52,7 @@ export interface User {
   phone: string;
   role: UserRole;
   status: UserStatus;
+  isOnline: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

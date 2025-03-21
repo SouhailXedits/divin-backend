@@ -91,6 +91,13 @@ export const userService = {
     });
   },
 
+  async updateOnlineStatus(id: string, isOnline: boolean) {
+    return prisma.user.update({
+      where: { id },
+      data: { isOnline },
+    });
+  },
+
   async updateRole(uniqueId: string, role: UserRole) {
     return prisma.user.update({
       where: { uniqueId },
