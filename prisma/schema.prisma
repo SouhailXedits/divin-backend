@@ -115,6 +115,8 @@ model Transaction {
   walletId    String
   type        String
   amount      Float
+  account     String?
+  email       String?
   status      String   @default("PENDING")
   description String?
   createdAt   DateTime @default(now())

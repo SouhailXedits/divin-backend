@@ -1,6 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { TransactionType } from '../types';
-
+import { PrismaClient } from "@prisma/client";
+import { TransactionType } from "../types";
 
 const prisma = new PrismaClient();
 
@@ -16,9 +15,9 @@ export const walletService = {
 
   async findByUserId(userId: string) {
     return prisma.wallet.findFirst({
-      where: { 
+      where: {
         userId,
-        archivedAt: null
+        archivedAt: null,
       },
       include: {
         user: true,
@@ -29,29 +28,29 @@ export const walletService = {
   async create(data: { userId: string; balance?: number }) {
     // Check if user exists and is active
     const user = await prisma.user.findFirst({
-      where: { 
+      where: {
         uniqueId: data.userId,
-        status: 'ACTIVE'
-      }
+        status: "ACTIVE",
+      },
     });
     if (!user) {
-      throw new Error('Active user not found');
+      throw new Error("Active user not found");
     }
 
     // Check if wallet already exists
     const existingWallet = await this.findByUserId(data.userId);
     if (existingWallet) {
-      throw new Error('User already has an active wallet');
+      throw new Error("User already has an active wallet");
     }
 
     return prisma.wallet.create({
       data: {
         userId: data.userId,
-        balance: data.balance || 0
+        balance: data.balance || 0,
       },
       include: {
-        user: true
-      }
+        user: true,
+      },
     });
   },
 
@@ -59,18 +58,18 @@ export const walletService = {
     return prisma.wallet.update({
       where: { id },
       data: {
-        archivedAt: new Date()
+        archivedAt: new Date(),
       },
       include: {
-        user: true
-      }
+        user: true,
+      },
     });
   },
 
   async unarchive(id: string) {
     return prisma.wallet.update({
       where: { id },
-      data: { archivedAt: null }
+      data: { archivedAt: null },
     });
   },
 
@@ -88,10 +87,11 @@ export const walletService = {
     walletId: string;
     type: TransactionType;
     amount: number;
+    account: string;
+    email: string;
     description: string;
   }) {
-
-    const { walletId, type, amount, description } = data;
+    const { walletId, type, amount, account, email, description } = data;
 
     // Start a transaction
     return prisma.$transaction(async (tx) => {
@@ -102,24 +102,27 @@ export const walletService = {
           walletId,
           type,
           amount,
+          account,
+          email,
           description,
         },
       });
 
       // Get current wallet
-      if(transaction.status !== 'PENDING') {
+      if (transaction.status !== "PENDING") {
         const wallet = await tx.wallet.findUnique({
           where: { id: walletId },
         });
 
         if (!wallet) {
-          throw new Error('Wallet not found');
+          throw new Error("Wallet not found");
         }
 
         // Update wallet balance
-        const newBalance = type === TransactionType.DEPOSIT
-          ? wallet.balance + amount
-          : wallet.balance - amount;
+        const newBalance =
+          type === TransactionType.DEPOSIT
+            ? wallet.balance + amount
+            : wallet.balance - amount;
 
         await tx.wallet.update({
           where: { id: walletId },
@@ -133,13 +136,16 @@ export const walletService = {
       return transaction;
     });
   },
-  async updateTransactionStatus(transactionId: string, status: "SUCCESS" | "PENDING" | "REJECTED") {
+  async updateTransactionStatus(
+    transactionId: string,
+    status: "SUCCESS" | "PENDING" | "REJECTED"
+  ) {
     const transaction = await prisma.transaction.findUnique({
       where: { id: transactionId },
     });
 
     if (!transaction) {
-      throw new Error('Transaction not found');
+      throw new Error("Transaction not found");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -148,19 +154,20 @@ export const walletService = {
         data: { status },
       });
 
-      if(updatedTransaction.status === 'SUCCESS') {
+      if (updatedTransaction.status === "SUCCESS") {
         // update wallet balance
         const wallet = await tx.wallet.findUnique({
           where: { id: updatedTransaction.walletId },
         });
 
         if (!wallet) {
-          throw new Error('Wallet not found');
+          throw new Error("Wallet not found");
         }
 
-        const newBalance = updatedTransaction.type === TransactionType.DEPOSIT
-          ? wallet.balance + updatedTransaction.amount
-          : wallet.balance - updatedTransaction.amount;
+        const newBalance =
+          updatedTransaction.type === TransactionType.DEPOSIT
+            ? wallet.balance + updatedTransaction.amount
+            : wallet.balance - updatedTransaction.amount;
 
         await tx.wallet.update({
           where: { id: updatedTransaction.walletId },
@@ -171,4 +178,4 @@ export const walletService = {
       return updatedTransaction;
     });
   },
-}; 
+};
