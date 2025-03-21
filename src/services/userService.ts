@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { User, UserRole, UserStatus } from '../types';
+import { PrismaClient } from "@prisma/client";
+import { User, UserRole, UserStatus } from "../types";
 
 const prisma = new PrismaClient();
 
@@ -11,24 +11,24 @@ export const userService = {
         wallet: true,
         userPlan: {
           include: {
-            plan: true
-          }
+            plan: true,
+          },
         },
         referralsAsAgent: {
           include: {
             agent: true,
-            customer: true
-          }
+            customer: true,
+          },
         },
         referralsAsCustomer: {
           include: {
             agent: true,
-            customer: true
-          }
-        }
+            customer: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
   },
@@ -41,10 +41,10 @@ export const userService = {
         wallet: true,
         userPlan: {
           include: {
-            plan: true
-          }
-        }
-      }
+            plan: true,
+          },
+        },
+      },
     });
   },
 
@@ -60,10 +60,10 @@ export const userService = {
       include: {
         userPlan: {
           include: {
-            plan: true
-          }
-        }
-      }
+            plan: true,
+          },
+        },
+      },
     });
   },
 
@@ -91,7 +91,7 @@ export const userService = {
     });
   },
 
-  async updateRole(uniqueId: string, role: UserRole) {    
+  async updateRole(uniqueId: string, role: UserRole) {
     return prisma.user.update({
       where: { uniqueId },
       data: { role },
@@ -106,38 +106,27 @@ export const userService = {
   },
 
   async delete(id: string) {
-    console.log('Deleting user with id:', id);
-    
-    // Use transaction to handle all related records deletion
     return prisma.$transaction(async (tx) => {
-      // Delete user's accounts
       await tx.account.deleteMany({
-        where: { userId: id }
+        where: { userId: id },
       });
-      
-      // Delete user's wallet
+
       await tx.wallet.deleteMany({
-        where: { userId: id }
+        where: { userId: id },
       });
-      
-      // Delete user's plan
+
       await tx.userPlan.deleteMany({
-        where: { userId: id }
+        where: { userId: id },
       });
-      
-      // Delete referrals where user is agent or customer
+
       await tx.referral.deleteMany({
-        where: { 
-          OR: [
-            { agentId: id },
-            { customerId: id }
-          ]
-        }
+        where: {
+          OR: [{ agentId: id }, { customerId: id }],
+        },
       });
-      
-      // Finally delete the user
+
       return tx.user.delete({
-        where: { id }
+        where: { id },
       });
     });
   },
@@ -145,7 +134,7 @@ export const userService = {
   async assignPlan(userId: string, planId: string) {
     // Check if user already has a plan
     const existingPlan = await prisma.userPlan.findUnique({
-      where: { userId }
+      where: { userId },
     });
 
     if (existingPlan) {
@@ -154,39 +143,38 @@ export const userService = {
         where: { userId },
         data: {
           planId,
-          status: 'PENDING',
-          updatedAt: new Date()
+          status: "PENDING",
+          updatedAt: new Date(),
         },
         include: {
-          plan: true
-        }
+          plan: true,
+        },
       });
     }
-    
 
     // Create new plan assignment
     return prisma.userPlan.create({
       data: {
         userId,
         planId,
-        status: 'PENDING'
+        status: "PENDING",
       },
       include: {
-        plan: true
-      }
+        plan: true,
+      },
     });
   },
 
   async updatePlan(userId: string, planId: string) {
     return prisma.userPlan.update({
       where: { userId },
-      data: { planId }
+      data: { planId },
     });
   },
 
   async removePlan(userId: string) {
     return prisma.userPlan.delete({
-      where: { userId }
+      where: { userId },
     });
-  }
-}; 
+  },
+};
