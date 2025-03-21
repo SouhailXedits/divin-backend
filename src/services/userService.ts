@@ -106,8 +106,39 @@ export const userService = {
   },
 
   async delete(id: string) {
-    return prisma.user.delete({
-      where: { id },
+    console.log('Deleting user with id:', id);
+    
+    // Use transaction to handle all related records deletion
+    return prisma.$transaction(async (tx) => {
+      // Delete user's accounts
+      await tx.account.deleteMany({
+        where: { userId: id }
+      });
+      
+      // Delete user's wallet
+      await tx.wallet.deleteMany({
+        where: { userId: id }
+      });
+      
+      // Delete user's plan
+      await tx.userPlan.deleteMany({
+        where: { userId: id }
+      });
+      
+      // Delete referrals where user is agent or customer
+      await tx.referral.deleteMany({
+        where: { 
+          OR: [
+            { agentId: id },
+            { customerId: id }
+          ]
+        }
+      });
+      
+      // Finally delete the user
+      return tx.user.delete({
+        where: { id }
+      });
     });
   },
 
