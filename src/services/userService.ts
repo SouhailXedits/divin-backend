@@ -91,7 +91,7 @@ export const userService = {
     });
   },
 
-  async updateOnlineStatus(id: string, isOnline: boolean) {
+  async updateOnlineStatus(id: string, isOnline: boolean) {    
     return prisma.user.update({
       where: { id },
       data: { isOnline },

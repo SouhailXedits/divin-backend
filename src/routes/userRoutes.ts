@@ -133,6 +133,7 @@ router.patch('/:id/online-status', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { isOnline } = req.body;
+    
     const user = await userService.updateOnlineStatus(id, isOnline);
     res.json(user);
   } catch (error) {
