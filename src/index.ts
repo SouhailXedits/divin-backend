@@ -254,7 +254,6 @@ io.on("connection", (socket: any) => {
       if (user) {
         authenticatedUserId = user.id;
         socket.join(`user:${user.id}`); // Join user-specific room for targeted updates
-        console.log(`✅ BACKEND SOCKET: User ${user.id} authenticated`);
         
         // Send initial data for this specific user
         await emitCustomerDashboardData(user.id, socket);
@@ -263,7 +262,6 @@ io.on("connection", (socket: any) => {
           callback({ success: true });
         }
       } else {
-        console.log(`❌ BACKEND SOCKET: Failed authentication for user ID ${data.userId}`);
         if (callback && typeof callback === "function") {
           callback({ success: false, error: "Authentication failed" });
         }
@@ -305,10 +303,6 @@ io.on("connection", (socket: any) => {
     // If callback is provided, call it to measure round-trip time
     if (callback && typeof callback === "function") {
       callback();
-    } else {
-      console.log(
-        `❌ BACKEND SOCKET: Client ${socket.id} sent ping without callback function`
-      );
     }
   });
 
@@ -341,44 +335,25 @@ io.on("connection", (socket: any) => {
     // Acknowledge receipt
     if (data.requireAck && typeof data.callback === "function") {
       data.callback({ received: true, timestamp: new Date().toISOString() });
-      console.log(
-        `✅ BACKEND SOCKET: Message acknowledgment sent to client ${socket.id}`
-      );
     }
   });
 
   // Debug command handler
   socket.on("debug", (command: string, params: any, callback: Function) => {
-    console.log(
-      `🔧 BACKEND SOCKET: Debug command from ${socket.id}: ${command}`,
-      params
-    );
-
     if (command === "stats") {
       callback(serverStats);
-      console.log(`✅ BACKEND SOCKET: Stats sent to client ${socket.id}`);
     } else if (command === "ping") {
       callback({ pong: true, serverTime: new Date().toISOString() });
-      console.log(`✅ BACKEND SOCKET: Pong sent to client ${socket.id}`);
     } else if (command === "forceUpdate") {
       emitRealTimeData();
       callback({ updating: true });
     } else {
       callback({ error: "Unknown command" });
-      console.log(
-        `❌ BACKEND SOCKET: Unknown command from client ${socket.id}: ${command}`
-      );
     }
   });
 
   socket.on("disconnect", (reason: string) => {
     serverStats.connections--;
-    console.log(
-      `👋 BACKEND SOCKET: Client disconnected: ${socket.id}, reason: ${reason}`
-    );
-    console.log(
-      `🔌 BACKEND SOCKET: Remaining active connections: ${serverStats.connections}`
-    );
   });
 });
 
@@ -452,7 +427,6 @@ async function emitCustomerDashboardData(userId: string, socket: any) {
     
     // Send to this specific socket or to user's room
     socket.emit("customerDashboardUpdate", dashboardData);
-    console.log(`✅ BACKEND SOCKET: Emitted dashboard data to user ${userId}`);
     
     return dashboardData;
   } catch (error) {

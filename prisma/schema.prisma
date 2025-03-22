@@ -16,6 +16,7 @@ model User {
   phone     String?
   role      String   @default("CUSTOMER")
   status    String   @default("PENDING")
+  isOnline  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -114,6 +115,8 @@ model Transaction {
   walletId    String
   type        String
   amount      Float
+  account     String?
+  email       String?
   status      String   @default("PENDING")
   description String?
   createdAt   DateTime @default(now())
