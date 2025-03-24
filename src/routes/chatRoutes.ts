@@ -114,8 +114,8 @@ router.post('/message', async (req, res) => {
     const sender = await prisma.user.findUnique({
       where: { id: senderId },
       select: { username: true, email: true, role: true },
-    });
-    const isAdminSender = sender?.role === "ADMIN" ? true : false;
+    });    
+    const isAdminSender = sender?.role === "ADMIN" ? true : false;    
 
     const result = await prisma.$transaction(async (tx) => {
       // Get the chat to determine the recipient
@@ -123,8 +123,9 @@ router.post('/message', async (req, res) => {
         where: { id: chatId },
         include: {
           customer: true,
+          
         },
-      });
+      });      
 
       if (!chat) {
         throw new Error("Chat not found");
@@ -192,7 +193,6 @@ router.post('/message', async (req, res) => {
       
       const senderName = sender?.username || "User";
       
-      
       if (isAdminSender) {
         // Admin sending to customer - notify customer
         const customer = await prisma.user.findUnique({
@@ -202,7 +202,7 @@ router.post('/message', async (req, res) => {
         
         if (customer?.email) {
           // Generate a URL for the customer to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
+          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}admin/chat`;
                     
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(
@@ -213,27 +213,69 @@ router.post('/message', async (req, res) => {
           );
         } 
       } else {
-        // Customer sending to admin - notify admin if admin has email
-        const adminUserInfo = await prisma.user.findFirst({
-          where: { role: "ADMIN" },
-          select: { email: true, username: true, id: true },
+        // Customer sending to admin - notify all staff with chat write permissions and admin users
+        const [allStaff, adminUsers] = await Promise.all([
+          // Get all active staff with relevant roles
+          prisma.staff.findMany({
+            where: { 
+              status: "ACTIVE",
+              role: {
+                in: ["ADMIN", "MANAGER", "SUPPORT", "COO", "CTO", "CMO", "CAO"]
+              }
+            },
+            select: { email: true, name: true, role: true, permissions: true }
+          }),
+          // Get all admin users
+          prisma.user.findMany({
+            where: { 
+              role: "ADMIN",
+              status: "ACTIVE"
+            },
+            select: { email: true, username: true, role: true }
+          })
+        ]);
+
+        // Filter staff members who have chat write permissions
+        const staffWithChatPermissions = allStaff.filter(staff => {
+          try {
+            const permissions = JSON.parse(staff.permissions as string);
+            return permissions.chat?.edit === true;
+          } catch (e) {
+            console.error("Error parsing permissions for staff:", e);
+            return false;
+          }
         });
-        
-        
-        if (adminUserInfo?.email) {
-          // Generate a URL for the admin to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
-                    
-          // Send email notification
-          const emailSent = await emailService.sendMessageNotification(
-            adminUserInfo.email,
-            senderName,
-            content,
-            chatUrl
-          );
-          
-        } else {
-          console.log("⚠️ Cannot send email: Admin email not found");
+
+        // Send email to each staff member with chat permissions
+        for (const staff of staffWithChatPermissions) {
+          if (staff.email) {
+            // Generate a URL for the staff to view the chat
+            const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat`;
+            
+            // Send email notification
+            await emailService.sendMessageNotification(
+              staff.email,
+              senderName,
+              content,
+              chatUrl
+            );
+          }
+        }
+
+        // Send email to all admin users
+        for (const admin of adminUsers) {
+          if (admin.email) {            
+            // Generate a URL for the admin to view the chat
+            const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat`;
+            
+            // Send email notification
+            await emailService.sendMessageNotification(
+              admin.email,
+              senderName,
+              content,
+              chatUrl
+            );
+          }
         }
       }
     } catch (emailError) {
