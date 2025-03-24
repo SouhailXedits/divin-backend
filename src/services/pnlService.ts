@@ -1,19 +1,21 @@
-import { PrismaClient, Prisma, Transaction } from '@prisma/client';
-import { PnL } from '../types';
-import crypto from 'crypto';
+import { PrismaClient, Prisma, Transaction } from "@prisma/client";
+import { PnL } from "../types";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
 export const pnlService = {
   async findAll(userId?: string) {
     const query: Prisma.PnLFindManyArgs = {
-      where: userId ? {
-        userPnls: {
-          some: {
-            userId
+      where: userId
+        ? {
+            userPnls: {
+              some: {
+                userId,
+              },
+            },
           }
-        }
-      } : undefined,
+        : undefined,
       include: {
         userPnls: {
           include: {
@@ -30,16 +32,16 @@ export const pnlService = {
         },
       },
       orderBy: {
-        date: 'desc',
+        date: "desc",
       },
     };
     return prisma.pnL.findMany(query);
   },
 
-  async create(data: Omit<PnL, 'id' | 'createdAt' | 'updatedAt'>) {
+  async create(data: Omit<PnL, "id" | "createdAt" | "updatedAt">) {
     const { userIds, ...pnlData } = data;
     let totalDivineAlgoShare = 0;
-    
+
     const query: Prisma.PnLCreateArgs = {
       data: {
         ...pnlData,
@@ -62,7 +64,7 @@ export const pnlService = {
         },
       },
     };
-    
+
     const pnl = await prisma.pnL.create(query);
 
     const users = await prisma.user.findMany({
@@ -92,14 +94,18 @@ export const pnlService = {
 
     Promise.all(
       users.map(async (user) => {
-        const customerPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingCustomer || 0) / 100;
-        const platformPnl = pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0) / 100;
-        if(user.referralsAsCustomer.length > 0) {
-          totalDivineAlgoShare += platformPnl * 70 / 100;
-          
+        const customerPnl =
+          (pnl.totalPnL * (user.userPlan?.plan.profitSharingCustomer || 0)) /
+          100;
+        const platformPnl =
+          (pnl.totalPnL * (user.userPlan?.plan.profitSharingPlatform || 0)) /
+          100;
+        if (user.referralsAsCustomer.length > 0) {
+          totalDivineAlgoShare += (platformPnl * 70) / 100;
+
           // Calculate agent earnings (30% of platform share)
-          const agentEarnings = platformPnl * 30 / 100;
-          
+          const agentEarnings = (platformPnl * 30) / 100;
+
           // Update the referral record with the agent's earnings
           await Promise.all(
             user.referralsAsCustomer.map(async (referral) => {
@@ -109,14 +115,16 @@ export const pnlService = {
                 SET "agentTotalEarnings" = "agentTotalEarnings" + ${agentEarnings} 
                 WHERE "id" = ${referral.id}
               `;
-              
+
               // Optional: Create transaction for the agent's wallet
               if (referral.agent?.wallet?.id) {
                 await this.createPnlTransaction({
                   walletId: referral.agent.wallet.id,
-                  type: 'PROFIT_SHARE',
+                  type: "PROFIT_SHARE",
                   amount: agentEarnings,
-                  status: 'SUCCESS',
+                  status: "SUCCESS",
+                  account: "PNL",
+                  email: "PNL",
                   description: `Divine Algo Share`,
                 });
               }
@@ -126,10 +134,12 @@ export const pnlService = {
           totalDivineAlgoShare += platformPnl;
         }
         await this.createPnlTransaction({
-          walletId: user.wallet?.id || '',
-          type: 'PROFIT_SHARE',
+          walletId: user.wallet?.id || "",
+          type: "PROFIT_SHARE",
           amount: platformPnl,
-          status: 'SUCCESS',
+          account: "PNL",
+          email: "PNL",
+          status: "SUCCESS",
           description: `Divine Algo Share`,
         });
 
@@ -203,7 +213,9 @@ export const pnlService = {
       where: { id },
     });
   },
-  async createPnlTransaction(data: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) {
+  async createPnlTransaction(
+    data: Omit<Transaction, "id" | "createdAt" | "updatedAt">
+  ) {
     const transaction = await prisma.transaction.create({
       data: {
         id: crypto.randomUUID(),
@@ -211,7 +223,7 @@ export const pnlService = {
         type: data.type,
         amount: data.amount,
         status: data.status,
-        description: data.description || null
+        description: data.description || null,
       },
     });
 
@@ -220,13 +232,16 @@ export const pnlService = {
     });
 
     if (wallet) {
-      if(data.type === 'DEPOSIT') {
+      if (data.type === "DEPOSIT") {
         wallet.balance += data.amount;
       } else {
         wallet.balance -= data.amount;
       }
-      await prisma.wallet.update({ where: { id: data.walletId }, data: { balance: wallet.balance } });
+      await prisma.wallet.update({
+        where: { id: data.walletId },
+        data: { balance: wallet.balance },
+      });
     }
     return transaction;
   },
-}; 
+};

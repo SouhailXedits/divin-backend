@@ -1,46 +1,47 @@
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  AGENT = 'AGENT',
-  CUSTOMER = 'CUSTOMER',
-  MANAGER = 'MANAGER',
-  SUPPORT = 'SUPPORT',
-  COO = 'COO',
-  CTO = 'CTO',
-  CMO = 'CMO',
-  CAO = 'CAO'
+  ADMIN = "ADMIN",
+  AGENT = "AGENT",
+  CUSTOMER = "CUSTOMER",
+  MANAGER = "MANAGER",
+  SUPPORT = "SUPPORT",
+  COO = "COO",
+  CTO = "CTO",
+  CMO = "CMO",
+  CAO = "CAO",
 }
 
 export enum StaffRole {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  SUPPORT = 'SUPPORT',
-  COO = 'COO',
-  CTO = 'CTO',
-  CMO = 'CMO',
-  CAO = 'CAO'
+  ADMIN = "ADMIN",
+  MANAGER = "MANAGER",
+  SUPPORT = "SUPPORT",
+  COO = "COO",
+  CTO = "CTO",
+  CMO = "CMO",
+  CAO = "CAO",
 }
 
 export enum StaffStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE'
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
 }
 
 export enum UserStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  PENDING = 'PENDING'
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  PENDING = "PENDING",
 }
 
 export enum AccountStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  PENDING = 'PENDING'
+  ACTIVE = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  PENDING = "PENDING",
 }
 
 export enum TransactionType {
-  DEPOSIT = 'DEPOSIT',
-  WITHDRAWAL = 'WITHDRAWAL',
-  PROFIT_SHARE = 'PROFIT_SHARE'
+  DEPOSIT = "DEPOSIT",
+  WITHDRAWAL = "WITHDRAWAL",
+  AGENT_WITHDRAWAL= "AGENT_WITHDRAWAL",
+  PROFIT_SHARE = "PROFIT_SHARE",
 }
 
 export interface User {
@@ -52,6 +53,7 @@ export interface User {
   phone: string;
   role: UserRole;
   status: UserStatus;
+  isOnline: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,7 +81,7 @@ export interface Plan {
   confirmationText?: string;
   createdAt: Date;
   updatedAt: Date;
-  visability: 'PUBLIC' | 'PRIVATE';
+  visability: "PUBLIC" | "PRIVATE";
 }
 
 export interface Wallet {
@@ -96,6 +98,8 @@ export interface Transaction {
   walletId: string;
   type: TransactionType;
   amount: number;
+  account: string;
+  email: string;
   description: string;
   createdAt: Date;
 }
@@ -133,4 +137,4 @@ export interface Staff {
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
-} 
+}
