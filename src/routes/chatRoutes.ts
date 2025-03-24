@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { Server } from 'socket.io';
-import { emailService } from '../services/emailService';
+import { Router } from "express";
+import { PrismaClient } from "@prisma/client";
+import { Server } from "socket.io";
+import { emailService } from "../services/emailService";
 
 // Initialize router
 const router = Router();
@@ -14,8 +14,8 @@ let serverStats: any;
 
 // Initialize the router with necessary dependencies
 export const initChatRoutes = (
-  prismaInstance: PrismaClient, 
-  ioInstance: Server, 
+  prismaInstance: PrismaClient,
+  ioInstance: Server,
   adminUserInstance: { id: string } | null,
   serverStatsInstance: any
 ) => {
@@ -27,7 +27,7 @@ export const initChatRoutes = (
 };
 
 // Get customer chat
-router.get('/customer/:customerId', async (req, res) => {
+router.get("/customer/:customerId", async (req, res) => {
   try {
     const { customerId } = req.params;
 
@@ -72,7 +72,7 @@ router.get('/customer/:customerId', async (req, res) => {
 });
 
 // Create a new chat
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { customerId } = req.body;
 
@@ -103,7 +103,7 @@ router.post('/', async (req, res) => {
 });
 
 // Send a message
-router.post('/message', async (req, res) => {
+router.post("/message", async (req, res) => {
   try {
     const { chatId, senderId, content } = req.body;
 
@@ -182,28 +182,28 @@ router.post('/message', async (req, res) => {
     // Get receiver information for email notification
     try {
       // Determine recipient (if admin is sender, recipient is customer, otherwise recipient is admin)
-      
-      
+
       // Get sender name for the email notification
       const sender = await prisma.user.findUnique({
         where: { id: senderId },
         select: { username: true },
       });
-      
+
       const senderName = sender?.username || "User";
-      
-      
+
       if (isAdminSender) {
         // Admin sending to customer - notify customer
         const customer = await prisma.user.findUnique({
           where: { id: result.chat.customerId },
           select: { email: true, username: true, id: true },
         });
-        
+
         if (customer?.email) {
           // Generate a URL for the customer to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
-                    
+          const chatUrl = `${
+            process.env.FRONTEND_URL || "http://localhost:5173"
+          }admin/chat`;
+
           // Send email notification
           const emailSent = await emailService.sendMessageNotification(
             result.chat.customer.email,
@@ -211,30 +211,84 @@ router.post('/message', async (req, res) => {
             content,
             chatUrl
           );
-        } 
-      } else {
-        // Customer sending to admin - notify admin if admin has email
-        const adminUserInfo = await prisma.user.findFirst({
-          where: { role: "ADMIN" },
-          select: { email: true, username: true, id: true },
-        });
-        
-        
-        if (adminUserInfo?.email) {
-          // Generate a URL for the admin to view the chat
-          const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat?id=${chatId}`;
-                    
-          // Send email notification
-          const emailSent = await emailService.sendMessageNotification(
-            adminUserInfo.email,
-            senderName,
-            content,
-            chatUrl
-          );
-          
-        } else {
-          console.log("⚠️ Cannot send email: Admin email not found");
         }
+      } else {
+        // Customer sending to admin - notify all staff with chat write permissions and admin users
+        const [allStaff, adminUsers] = await Promise.all([
+          // Get all active staff with relevant roles
+          prisma.staff.findMany({
+            where: {
+              status: "ACTIVE",
+              role: {
+                in: ["ADMIN", "MANAGER", "SUPPORT", "COO", "CTO", "CMO", "CAO"],
+              },
+            },
+            select: { email: true, name: true, role: true, permissions: true },
+          }),
+          // Get all admin users
+          prisma.user.findMany({
+            where: {
+              role: "ADMIN",
+              status: "ACTIVE",
+            },
+            select: { email: true, username: true, role: true },
+          }),
+        ]);
+
+        // Filter staff members who have chat write permissions
+        const staffWithChatPermissions = allStaff.filter((staff) => {
+          try {
+            const permissions = JSON.parse(staff.permissions as string);
+            return (
+              permissions.chat?.edit === true || permissions.chat?.view === true
+            );
+          } catch (e) {
+            console.error("Error parsing permissions for staff:", e);
+            return false;
+          }
+        });
+
+        // Send email to each staff member with chat permissions
+        // for (const staff of staffWithChatPermissions) {
+        //   if (staff.email) {
+        //     // Generate a URL for the staff to view the chat
+        //     const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat`;
+
+        //     // Send email notification
+        //     await emailService.sendMessageNotification(
+        //       staff.email,
+        //       senderName,
+        //       content,
+        //       chatUrl
+        //     );
+        //   }
+        // }
+
+        // // Send email to all admin users
+        // for (const admin of adminUsers) {
+        //   if (admin.email) {
+        //     // Generate a URL for the admin to view the chat
+        //     const chatUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}dashboard/chat`;
+
+        //     // Send email notification
+        //     await emailService.sendMessageNotification(
+        //       admin.email,
+        //       senderName,
+        //       content,
+        //       chatUrl
+        //     );
+        //   }
+        // }
+        const chatUrl = `${
+          process.env.FRONTEND_URL || "http://localhost:5173"
+        }dashboard/chat`;
+
+        await emailService.sendMessageNotification(
+          process.env.EMAIL_USER || "",
+          senderName,
+          content,
+          chatUrl
+        );
       }
     } catch (emailError) {
       console.error("Error sending email notification:", emailError);
@@ -250,7 +304,7 @@ router.post('/message', async (req, res) => {
 });
 
 // Mark chat as read
-router.post('/:chatId/read', async (req, res) => {
+router.post("/:chatId/read", async (req, res) => {
   try {
     const { chatId } = req.params;
 
@@ -293,7 +347,7 @@ router.post('/:chatId/read', async (req, res) => {
 });
 
 // Delete a chat
-router.delete('/:chatId', async (req, res) => {
+router.delete("/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
 
@@ -317,4 +371,4 @@ router.delete('/:chatId', async (req, res) => {
   }
 });
 
-export default router; 
+export default router;

@@ -83,7 +83,7 @@ export const emailService = {
     senderName: string,
     messageContent: string,
     chatUrl: string
-  ): Promise<boolean> {
+  ): Promise<boolean> {    
     const subject = `New message from ${senderName}`;
 
     // Create a preview of the message (first 100 characters)

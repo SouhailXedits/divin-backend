@@ -109,7 +109,10 @@ export const walletService = {
       });
 
       // Get current wallet
-      if (transaction.status !== "PENDING") {
+      if (
+        transaction.status !== "PENDING" &&
+        transaction.type !== "AGENT_WITHDRAWAL"
+      ) {
         const wallet = await tx.wallet.findUnique({
           where: { id: walletId },
         });
@@ -136,6 +139,7 @@ export const walletService = {
       return transaction;
     });
   },
+
   async updateTransactionStatus(
     transactionId: string,
     status: "SUCCESS" | "PENDING" | "REJECTED"
