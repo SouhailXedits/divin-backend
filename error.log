@@ -20,3 +20,35 @@
     at Module.load (node:internal/modules/cjs/loader:1289:32)
     at Function._load (node:internal/modules/cjs/loader:1108:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2025-03-24T22:43:22.134Z - Uncaught Exception: PrismaClientKnownRequestError: 
+Invalid `prisma.transaction.create()` invocation in
+C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:219:50
+
+  216 async createPnlTransaction(
+  217   data: Omit<Transaction, "id" | "createdAt" | "updatedAt">
+  218 ) {
+→ 219   const transaction = await prisma.transaction.create(
+Foreign key constraint violated: `foreign key`
+    at $n.handleRequestError (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async Object.createPnlTransaction (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:219:25)
+    at async <anonymous> (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:136:9)
+    at async Promise.all (index 0)
+2025-03-24T22:44:59.064Z - Uncaught Exception: PrismaClientKnownRequestError: 
+Invalid `prisma.transaction.create()` invocation in
+C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:219:50
+
+  216 async createPnlTransaction(
+  217   data: Omit<Transaction, "id" | "createdAt" | "updatedAt">
+  218 ) {
+→ 219   const transaction = await prisma.transaction.create(
+Foreign key constraint violated: `foreign key`
+    at $n.handleRequestError (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async Object.createPnlTransaction (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:219:25)
+    at async <anonymous> (C:\Users\slima\OneDrive\Bureau\Work\divin-collap\divin-backend\src\services\pnlService.ts:136:9)
+    at async Promise.all (index 0)
