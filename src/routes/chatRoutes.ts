@@ -239,7 +239,7 @@ router.post('/message', async (req, res) => {
         const staffWithChatPermissions = allStaff.filter(staff => {
           try {
             const permissions = JSON.parse(staff.permissions as string);
-            return permissions.chat?.edit === true;
+            return permissions.chat?.edit === true || permissions.chat?.view === true;
           } catch (e) {
             console.error("Error parsing permissions for staff:", e);
             return false;
