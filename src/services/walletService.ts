@@ -158,7 +158,7 @@ export const walletService = {
         data: { status },
       });
 
-      if (updatedTransaction.status === "SUCCESS") {
+      if (updatedTransaction.status === "SUCCESS" && updatedTransaction.type !== "AGENT_WITHDRAWAL") {
         // update wallet balance
         const wallet = await tx.wallet.findUnique({
           where: { id: updatedTransaction.walletId },
