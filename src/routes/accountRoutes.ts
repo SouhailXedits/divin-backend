@@ -45,6 +45,21 @@ router.patch('/:id/status', async (req, res, next) => {
   }
 });
 
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { accountNo, server, password } = req.body;
+    const account = await accountService.update(id, {
+      accountNo,
+      server,
+      password,
+    });
+    res.json(account);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
