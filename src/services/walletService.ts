@@ -92,7 +92,6 @@ export const walletService = {
     description: string;
   }) {
     const { walletId, type, amount, account, email, description } = data;
-
     // Start a transaction
     return prisma.$transaction(async (tx) => {
       // Create the transaction record
@@ -158,7 +157,10 @@ export const walletService = {
         data: { status },
       });
 
-      if (updatedTransaction.status === "SUCCESS" && updatedTransaction.type !== "AGENT_WITHDRAWAL") {
+      if (
+        updatedTransaction.status === "SUCCESS" &&
+        updatedTransaction.type !== "AGENT_WITHDRAWAL"
+      ) {
         // update wallet balance
         const wallet = await tx.wallet.findUnique({
           where: { id: updatedTransaction.walletId },

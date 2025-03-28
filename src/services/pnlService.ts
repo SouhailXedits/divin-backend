@@ -117,17 +117,17 @@ export const pnlService = {
               `;
 
               // Optional: Create transaction for the agent's wallet
-              if (referral.agent?.wallet?.id) {
-                await this.createPnlTransaction({
-                  walletId: referral.agent.wallet.id,
-                  type: "PROFIT_SHARE",
-                  amount: agentEarnings,
-                  status: "SUCCESS",
-                  account: "PNL",
-                  email: "PNL",
-                  description: `Divine Algo Share`,
-                });
-              }
+              // if (referral.agent?.wallet?.id) {
+              //   await this.createPnlTransaction({
+              //     walletId: referral.agent.wallet.id,
+              //     type: "PROFIT_SHARE",
+              //     amount: agentEarnings,
+              //     status: "SUCCESS",
+              //     account: "PNL",
+              //     email: "PNL",
+              //     description: `Divine Algo Share`,
+              //   });
+              // }
             })
           );
         } else {

@@ -55,6 +55,20 @@ export const accountService = {
     });
   },
 
+  async update(id: string, data: {
+    accountNo: string;
+    server: string;
+    password: string;
+  }) {
+    return prisma.account.update({
+      where: { id },
+      data,
+      include: {
+        user: true,
+      },
+    });
+  },
+
   async delete(id: string) {
     return prisma.account.delete({
       where: { id },
