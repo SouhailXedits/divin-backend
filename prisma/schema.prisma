@@ -117,6 +117,7 @@ model Transaction {
   amount      Float
   account     String?
   email       String?
+  invoiceId   String?
   status      String   @default("PENDING")
   description String?
   createdAt   DateTime @default(now())

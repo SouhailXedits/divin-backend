@@ -6,7 +6,7 @@ dotenv.config();
 
 // Create a nodemailer transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.hostinger.com",
+  host: process.env.EMAIL_HOST || "smtp.google.com",
   port: parseInt(process.env.EMAIL_PORT || "465"),
   secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
   auth: {
