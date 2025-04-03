@@ -62,7 +62,7 @@ router.patch('/:userId/balance', async (req, res, next) => {
 router.post('/transactions', async (req, res, next) => {
 
   try {
-    const { walletId, type, amount,account,email, description } = req.body;
+    const { walletId, type, amount,account,email, description, invoiceId } = req.body;
 
     const transaction = await walletService.createTransaction({
       walletId,
@@ -70,7 +70,24 @@ router.post('/transactions', async (req, res, next) => {
       amount,
       account,
       email,
+      invoiceId,
       description,
+    });
+    res.status(201).json(transaction);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/transactions/:id/invoice', async (req, res, next) => {
+
+  try {
+    const { id } = req.params;
+    const { invoiceId } = req.body;
+
+    const transaction = await walletService.updateTransactionInvoice({
+      id,
+      invoiceId,
     });
     res.status(201).json(transaction);
   } catch (error) {

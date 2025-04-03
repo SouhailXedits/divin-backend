@@ -89,9 +89,10 @@ export const walletService = {
     amount: number;
     account: string;
     email: string;
+    invoiceId: string;
     description: string;
   }) {
-    const { walletId, type, amount, account, email, description } = data;
+    const { walletId, type, amount, account, email, description, invoiceId } = data;
     // Start a transaction
     return prisma.$transaction(async (tx) => {
       // Create the transaction record
@@ -102,6 +103,7 @@ export const walletService = {
           type,
           amount,
           account,
+          invoiceId,
           email,
           description,
         },
@@ -136,6 +138,17 @@ export const walletService = {
       }
 
       return transaction;
+    });
+  },
+
+  async updateTransactionInvoice(data: {
+    id: string;
+    invoiceId: string;
+  }) {
+    const { id, invoiceId } = data;
+    return prisma.transaction.update({
+      where: { id },
+      data: { invoiceId },
     });
   },
 
